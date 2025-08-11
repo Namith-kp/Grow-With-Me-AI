@@ -183,8 +183,10 @@ const App: React.FC = () => {
             try {
                 // Use SESSION persistence in all Android WebView environments
                 if (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView())) {
+                    console.log('[Auth] Setting persistence: SESSION (WebView/Android)');
                     await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
                 } else {
+                    console.log('[Auth] Setting persistence: LOCAL (default)');
                     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                 }
             } catch (err: any) {
@@ -198,23 +200,28 @@ const App: React.FC = () => {
             const token = getTokenFromUrl();
             if (token && (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView()))) {
                 try {
+                    console.log('[Auth] Found token in URL, attempting signInWithCredential');
                     const credential = firebase.auth.GoogleAuthProvider.credential(token);
                     await auth.signInWithCredential(credential);
+                    console.log('[Auth] signInWithCredential succeeded');
                 } catch (err) {
-                    console.error('Error signing in with token from URL:', err);
+                    console.error('[Auth] Error signing in with token from URL:', err);
                     setError('Failed to sign in with Google token. Please try again.');
                     setAuthLoading(false);
                     return;
                 }
+            } else {
+                console.log('[Auth] No token in URL or not in WebView, skipping signInWithCredential');
             }
 
             unsubscribe = auth.onAuthStateChanged(async (user) => {
+                console.log('[Auth] onAuthStateChanged fired. User:', user);
                 setAuthLoading(true);
                 if (user && !authConfigError) {
                     setAuthUser(user);
                     let profile = await firestoreService.getUserProfile(user.uid);
                     if (!profile) {
-                        // Create a new user profile if missing (first sign-in)
+                        console.log('[Auth] No profile found, creating new user profile');
                         await firestoreService.createUserProfile(user.uid, {
                             email: user.email || '',
                             name: user.displayName || '',
@@ -248,6 +255,7 @@ const App: React.FC = () => {
                             Array.isArray(profile.interests) && profile.interests.length > 0 &&
                             typeof profile.lookingFor === 'string' && profile.lookingFor.trim() !== ''
                         );
+                        console.log('[Auth] Profile loaded. isProfileComplete:', isProfileComplete, profile);
                         if (isProfileComplete) {
                             navigate(View.DASHBOARD);
                         } else {
@@ -255,6 +263,7 @@ const App: React.FC = () => {
                         }
                     } else {
                         // If profile creation failed, fallback to onboarding
+                        console.log('[Auth] Profile creation failed, fallback to onboarding');
                         navigate(View.ONBOARDING);
                     }
                 } else {
@@ -270,6 +279,7 @@ const App: React.FC = () => {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
+                    console.log('[Auth] No user, navigating to landing page');
                     navigate(View.LANDING);
                 }
                 setAuthLoading(false);
