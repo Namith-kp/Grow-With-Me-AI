@@ -59,7 +59,8 @@ const App: React.FC = () => {
                     setAuthLoading(false);
                 })
                 .catch((e) => {
-                    setError("Native sign-in failed: " + e.message);
+                    console.error('Native sign-in failed:', e);
+                    setError("Native sign-in failed: " + (e && e.message ? e.message : JSON.stringify(e)));
                     setAuthLoading(false);
                 });
         }
