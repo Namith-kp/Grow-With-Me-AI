@@ -172,12 +172,12 @@ const App: React.FC = () => {
 
         let unsubscribe: firebase.Unsubscribe = () => {};
 
-        function isAndroidWebView() {
-            return typeof navigator !== 'undefined' && (
-                /wv/.test(navigator.userAgent) ||
-                (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
-            );
-        }
+function isAndroidWebView() {
+    return typeof navigator !== 'undefined' && (
+        /wv/.test(navigator.userAgent) ||
+        (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
+    );
+}
         const setupAuth = async () => {
             setAuthLoading(true);
             try {
@@ -368,7 +368,7 @@ const App: React.FC = () => {
                 id: authUser.uid,
                 ...profileData,
                 avatarUrl: authUser.photoURL || `https://api.dicebear.com/8.x/bottts/svg?seed=${authUser.uid}`,
-                connections: [], // Initialize with an empty array
+                connections: [],
             };
 
             if (isGuestMode) {
@@ -379,19 +379,26 @@ const App: React.FC = () => {
                 await firestoreService.createUserProfile(authUser.uid, {
                     ...profileData,
                     avatarUrl: newUserProfile.avatarUrl,
-                    connections: [], // Also initialize in Firestore
+                    connections: [],
                 });
-                // Force reload the Firebase user and profile to ensure session is active
-                await auth.currentUser?.reload();
-                const refreshedUser = auth.currentUser;
-                if (refreshedUser) {
-                    setAuthUser(refreshedUser);
-                    const createdProfile = await firestoreService.getUserProfile(refreshedUser.uid);
-                    setUserProfile(createdProfile);
-                    navigate(View.DASHBOARD);
+                // After onboarding, reload the app with the token in the URL to keep the session alive in WebView
+                const token = getTokenFromUrl();
+                if (token && (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView()))) {
+                    window.location.replace(`${window.location.origin}${window.location.pathname}?token=${token}`);
+                    return;
                 } else {
-                    setError("Session lost after onboarding. Please sign in again.");
-                    navigate(View.LANDING);
+                    // Fallback for non-WebView
+                    await auth.currentUser?.reload();
+                    const refreshedUser = auth.currentUser;
+                    if (refreshedUser) {
+                        setAuthUser(refreshedUser);
+                        const createdProfile = await firestoreService.getUserProfile(refreshedUser.uid);
+                        setUserProfile(createdProfile);
+                        navigate(View.DASHBOARD);
+                    } else {
+                        setError("Session lost after onboarding. Please sign in again.");
+                        navigate(View.LANDING);
+                    }
                 }
             }
         } catch (err) {
