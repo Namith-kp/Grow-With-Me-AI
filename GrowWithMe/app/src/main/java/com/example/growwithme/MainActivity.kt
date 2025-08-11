@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private val RC_SIGN_IN = 9001
     private lateinit var googleSignInClient: GoogleSignInClient
     private var webView: WebView? = null
+    private var lastGoogleIdToken: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,13 +50,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadWebAppWithTokenIfSignedIn() {
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user != null) {
-            user.getIdToken(false).addOnSuccessListener { result ->
-                val idToken = result.token
-                val url = "https://namith-kp.github.io/Grow-With-Me-AI/?token=" + idToken
-                webView?.loadUrl(url)
-            }
+        if (lastGoogleIdToken != null) {
+            val url = "https://namith-kp.github.io/Grow-With-Me-AI/?token=" + lastGoogleIdToken
+            webView?.loadUrl(url)
         } else {
             // Not signed in, just load the web app (no token)
             webView?.loadUrl("https://namith-kp.github.io/Grow-With-Me-AI/")
@@ -73,6 +70,7 @@ class MainActivity : AppCompatActivity() {
             val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)
+                lastGoogleIdToken = account.idToken
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
                 Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
