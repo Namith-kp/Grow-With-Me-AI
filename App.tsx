@@ -227,11 +227,17 @@ const App: React.FC = () => {
 
         let unsubscribe: firebase.Unsubscribe = () => {};
 
+        function isAndroidWebView() {
+            return typeof navigator !== 'undefined' && (
+                /wv/.test(navigator.userAgent) ||
+                (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
+            );
+        }
         const setupAuth = async () => {
             setAuthLoading(true);
             try {
-                // Use NONE persistence in WebView with token, LOCAL otherwise
-                if (typeof window !== 'undefined' && window.location.search.includes('token')) {
+                // Use NONE persistence in all Android WebView environments
+                if (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView())) {
                     await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
                 } else {
                     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
