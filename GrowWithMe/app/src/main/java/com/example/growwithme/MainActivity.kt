@@ -24,6 +24,13 @@ import com.google.firebase.auth.GoogleAuthProvider
 
 
 class MainActivity : AppCompatActivity() {
+    // ...existing code...
+
+    private fun signOutFromGoogle() {
+        googleSignInClient.signOut().addOnCompleteListener(this) {
+            // Optionally reload landing page or clear WebView state
+        }
+    }
 
     private val RC_SIGN_IN = 9001
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -96,6 +103,13 @@ class MainActivity : AppCompatActivity() {
         fun triggerGoogleSignIn() {
             activity.runOnUiThread {
                 signInWithGoogle()
+            }
+        }
+
+        @JavascriptInterface
+        fun signOutFromGoogle() {
+            activity.runOnUiThread {
+                signOutFromGoogle()
             }
         }
     }

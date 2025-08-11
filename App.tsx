@@ -331,6 +331,10 @@ const App: React.FC = () => {
         } else {
             // onAuthStateChanged will handle the state reset after signOut
             await auth.signOut();
+            // If in Android WebView, also sign out from Google
+            if (typeof window !== 'undefined' && (window as any).AndroidBridge && typeof (window as any).AndroidBridge.signOutFromGoogle === 'function') {
+                (window as any).AndroidBridge.signOutFromGoogle();
+            }
         }
     };
 
