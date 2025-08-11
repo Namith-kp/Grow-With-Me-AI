@@ -256,7 +256,22 @@ const App: React.FC = () => {
                 setAuthLoading(true);
                 if (user && !authConfigError) {
                     setAuthUser(user);
-                    const profile = await firestoreService.getUserProfile(user.uid);
+                    let profile = await firestoreService.getUserProfile(user.uid);
+                    if (!profile) {
+                        // Create a new user profile if missing (first sign-in)
+                        await firestoreService.createUserProfile(user.uid, {
+                            email: user.email || '',
+                            name: user.displayName || '',
+                            avatarUrl: user.photoURL || '',
+                            connections: [],
+                            role: '', // or another valid Role value
+                            location: '',
+                            skills: [],
+                            interests: [],
+                            lookingFor: '',
+                        });
+                        profile = await firestoreService.getUserProfile(user.uid);
+                    }
                     if (profile) {
                         setUserProfile(profile);
                         if (!user.isAnonymous) {
@@ -269,6 +284,7 @@ const App: React.FC = () => {
                         }
                         navigate(View.DASHBOARD);
                     } else {
+                        // If profile creation failed, fallback to onboarding
                         navigate(View.ONBOARDING);
                     }
                 } else {
