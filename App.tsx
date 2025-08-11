@@ -181,9 +181,9 @@ const App: React.FC = () => {
         const setupAuth = async () => {
             setAuthLoading(true);
             try {
-                // Use NONE persistence in all Android WebView environments
+                // Use SESSION persistence in all Android WebView environments
                 if (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView())) {
-                    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
                 } else {
                     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                 }
