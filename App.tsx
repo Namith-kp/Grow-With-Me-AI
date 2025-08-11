@@ -6,6 +6,21 @@ import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAut
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 import React, { useState, useEffect, useCallback } from 'react';
+import LandingPage from './components/LandingPage';
+import AuthComponent from './components/Auth';
+import Onboarding from './components/Onboarding';
+import Dashboard from './components/Dashboard';
+import FounderNegotiations from './components/FounderNegotiations';
+import InvestorNegotiations from './components/InvestorNegotiations';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import Messages from './components/Messages';
+import IdeasBoard from './components/IdeasBoard';
+import RequestsBoard from './components/RequestsBoard';
+import People from './components/People';
+import { ApiKeysNotice } from './components/ApiKeysNotice';
+import Header from './components/Header';
+import ChatModal from './components/ChatModal';
+import { DUMMY_USERS } from './constants';
 import firebase from 'firebase/compat/app';
 import { User, EnrichedMatch, View, AnalyticsData, UserActivity, Chat, ConnectionRequest } from './types';
 import { findMatches } from './services/geminiService';
@@ -17,64 +32,6 @@ function getTokenFromUrl() {
     const params = new URLSearchParams(window.location.search);
     return params.get("token");
 }
-
-function isAndroidWebView() {
-    // Detect Android WebView by user agent
-    return /wv/.test(navigator.userAgent) || /Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent);
-}
-import Header from './components/Header';
-import Onboarding from './components/Onboarding';
-import Dashboard from './components/Dashboard';
-import AnalyticsDashboard from './components/AnalyticsDashboard';
-import AuthComponent from './components/Auth';
-import Messages from './components/Messages';
-import ChatModal from './components/ChatModal';
-import IdeasBoard from './components/IdeasBoard';
-import RequestsBoard from './components/RequestsBoard';
-import People from './components/People';
-import LandingPage from './components/LandingPage';
-import FounderNegotiations from './components/FounderNegotiations';
-import InvestorNegotiations from './components/InvestorNegotiations';
-import { DUMMY_USERS } from './constants';
-
-const ApiKeysNotice = ({ isDomainError = false }: { isDomainError?: boolean }) => {
-    const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'your-app-domain.com';
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-[100] p-4 text-center">
-            <div className="bg-neutral-900 border border-red-500 rounded-lg p-8 max-w-3xl animate-fade-in-scale">
-                <h2 className="text-3xl font-bold text-red-400 mb-4">
-                    {isDomainError ? "Authentication Domain Error" : "Action Required: App Configuration"}
-                </h2>
-                <p className="text-neutral-300 mb-6">
-                     {isDomainError
-                        ? `Firebase has blocked authentication from this domain. To fix this, you need to add your app's domain to the list of authorized domains in your Firebase project.`
-                        : "This application requires API keys and Firebase configuration to function correctly. Please follow the steps below."
-                    }
-                </p>
-                <div className="space-y-4 text-left">
-                    {!isDomainError && (
-                        <div className="bg-neutral-800 p-4 rounded-lg">
-                            <p className="font-semibold text-white">1. Configure Firebase</p>
-                            <p className="text-neutral-400 text-sm">
-                                Open the <code className="bg-neutral-900 px-1 py-0.5 rounded text-yellow-400">firebase.ts</code> file and fill in your full Firebase project configuration object.
-                            </p>
-                        </div>
-                    )}
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                        <p className="font-semibold text-white">{isDomainError ? "Authorize Your Domain" : "2. Authorize Your Domain for Firebase Authentication"}</p>
-                        <p className="text-neutral-400 text-sm mb-2">
-                            To prevent authentication errors (like <code className="bg-neutral-900 px-1 py-0.5 rounded text-red-400">auth/unauthorized-domain</code>), you must add your application's domain to the list of authorized domains in your Firebase project.
-                        </p>
-                        <p className="text-neutral-400 text-sm">
-                            Navigate to: <span className="text-white">Firebase Console</span> &rarr; <span className="text-white">Authentication</span> &rarr; <span className="text-white">Settings</span> &rarr; <span className="text-white">Authorized domains</span>, and click "Add domain".
-                        </p>
-                        <p className="text-neutral-400 text-sm mt-2">Your current domain is:</p>
-                        <div className="bg-neutral-900 text-yellow-300 p-2 rounded mt-2 text-center font-mono select-all">
-                            {currentDomain}
-                        </div>
-                    </div>
-                     {!isDomainError && (
                          <div className="bg-neutral-800 p-4 rounded-lg">
                             <p className="font-semibold text-white">3. Configure Gemini API Key</p>
                             <p className="text-neutral-400 text-sm">
@@ -264,7 +221,7 @@ const App: React.FC = () => {
                             name: user.displayName || '',
                             avatarUrl: user.photoURL || '',
                             connections: [],
-                            role: '', // or another valid Role value
+                            role: undefined, // Use undefined for missing Role
                             location: '',
                             skills: [],
                             interests: [],
@@ -282,7 +239,21 @@ const App: React.FC = () => {
                                 console.error('Error starting user session:', error);
                             }
                         }
-                        navigate(View.DASHBOARD);
+                        // If the profile has a role and required fields, go to dashboard. Otherwise, go to onboarding.
+                        // Type-safe profile completeness check
+                        const isProfileComplete = (
+                            typeof profile.role !== 'undefined' &&
+                            typeof profile.name === 'string' && profile.name.trim() !== '' &&
+                            typeof profile.location === 'string' && profile.location.trim() !== '' &&
+                            Array.isArray(profile.skills) && profile.skills.length > 0 &&
+                            Array.isArray(profile.interests) && profile.interests.length > 0 &&
+                            typeof profile.lookingFor === 'string' && profile.lookingFor.trim() !== ''
+                        );
+                        if (isProfileComplete) {
+                            navigate(View.DASHBOARD);
+                        } else {
+                            navigate(View.ONBOARDING);
+                        }
                     } else {
                         // If profile creation failed, fallback to onboarding
                         navigate(View.ONBOARDING);
