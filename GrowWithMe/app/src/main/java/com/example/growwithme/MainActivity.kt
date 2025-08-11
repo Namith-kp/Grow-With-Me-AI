@@ -96,7 +96,17 @@ class MainActivity : AppCompatActivity() {
             try {
                 val account = task.getResult(ApiException::class.java)
                 lastGoogleIdToken = account.idToken
-                firebaseAuthWithGoogle(account.idToken!!)
+                // Inject user info into the WebView via JS bridge
+                val idToken = account.idToken ?: ""
+                val name = account.displayName ?: ""
+                val email = account.email ?: ""
+                val avatarUrl = account.photoUrl?.toString() ?: ""
+                val js = "window.setNativeUser('" + idToken.replace("'", "\\'") + "', '" + name.replace("'", "\\'") + "', '" + email.replace("'", "\\'") + "', '" + avatarUrl.replace("'", "\\'") + "');"
+                runOnUiThread {
+                    webView?.evaluateJavascript(js, null)
+                }
+                // Optionally, you can still call firebaseAuthWithGoogle if you want to keep Firebase Auth for other platforms
+                // firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
                 Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
