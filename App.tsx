@@ -32,19 +32,6 @@ function getTokenFromUrl() {
     const params = new URLSearchParams(window.location.search);
     return params.get("token");
 }
-                         <div className="bg-neutral-800 p-4 rounded-lg">
-                            <p className="font-semibold text-white">3. Configure Gemini API Key</p>
-                            <p className="text-neutral-400 text-sm">
-                               This application uses the Gemini API for its core matching functionality. The API key is sourced from an environment variable (<code className="bg-neutral-900 px-1 py-0.5 rounded text-yellow-400">process.env.API_KEY</code>). Please ensure this environment variable is set up correctly in your deployment environment.
-                            </p>
-                        </div>
-                    )}
-                </div>
-                <p className="text-neutral-500 mt-6 text-sm">The application will not function correctly until these steps are completed. You may need to refresh the page after configuration.</p>
-            </div>
-        </div>
-    );
-};
 
 
 
