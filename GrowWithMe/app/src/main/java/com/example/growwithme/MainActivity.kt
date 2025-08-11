@@ -7,9 +7,11 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
-import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.Toast
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -26,20 +28,27 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // setContentView(R.layout.activity_main) // Uncomment and use your layout
 
+        // Initialize GoogleSignInClient before any usage
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        if (FirebaseAuth.getInstance().currentUser != null) {
-            // User is signed in, proceed to your app's main screen
-            // setContentView(R.layout.activity_main)
+        // Show a simple sign-in button if not signed in
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            val button = Button(this)
+            button.text = "Sign in with Google"
+            button.setOnClickListener { signInWithGoogle() }
+            setContentView(button)
         } else {
-            signInWithGoogle()
+            // Already signed in, load web app
+            loadWebAppWithToken()
         }
+
+    // ...existing code...
+
     }
 
     private fun signInWithGoogle() {
@@ -65,12 +74,26 @@ class MainActivity : AppCompatActivity() {
         FirebaseAuth.getInstance().signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Sign in success, update UI
-                    // setContentView(R.layout.activity_main)
+                    // Sign in success, load web app with token
+                    loadWebAppWithToken()
                 } else {
                     Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    private fun loadWebAppWithToken() {
+        val user = FirebaseAuth.getInstance().currentUser
+        user?.getIdToken(false)?.addOnSuccessListener { result ->
+            val idToken = result.token
+            val webView = WebView(this)
+            webView.settings.javaScriptEnabled = true
+            webView.webViewClient = WebViewClient()
+            // Pass the token as a URL parameter (your web app must handle it)
+            val url = "https://namith-kp.github.io/Grow-With-Me-AI/?token=" + idToken
+            webView.loadUrl(url)
+            setContentView(webView)
+        }
     }
 }
 

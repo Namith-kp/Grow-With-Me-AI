@@ -18,9 +18,10 @@ interface AuthComponentProps {
     onGoogleLogin: () => void;
     onGuestLogin: () => void;
     error: string | null;
+    authUser: any;
 }
 
-const AuthComponent = ({ onGoogleLogin, onGuestLogin, error }: AuthComponentProps) => {
+const AuthComponent = ({ onGoogleLogin, onGuestLogin, error, authUser }: AuthComponentProps) => {
     return (
         <div className="relative flex flex-col items-center justify-center min-h-screen w-full px-2 sm:px-4 pt-8 pb-8 text-center overflow-hidden z-10">
         {/* 3D Globe and FloatingShapes Background */}
@@ -61,13 +62,16 @@ const AuthComponent = ({ onGoogleLogin, onGuestLogin, error }: AuthComponentProp
             </p>
             <div className="flex flex-col space-y-4 pt-4">
                 {error && <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-sm mb-4 text-left">{error}</div>}
-                <button
-                    onClick={onGoogleLogin}
-                    className="flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-extrabold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/20 text-lg tracking-wide border-2 border-white/10 focus:outline-none focus:ring-4 focus:ring-purple-400/30"
-                >
-                    <GoogleIcon className="w-6 h-6" />
-                    Sign In with Google
-                </button>
+                {/* Hide Google sign-in button if already authenticated or in Android WebView with token */}
+                {!authUser && !(typeof window !== 'undefined' && window.location.search.includes('token')) && (
+                    <button
+                        onClick={onGoogleLogin}
+                        className="flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-extrabold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/20 text-lg tracking-wide border-2 border-white/10 focus:outline-none focus:ring-4 focus:ring-purple-400/30"
+                    >
+                        <GoogleIcon className="w-6 h-6" />
+                        Sign In with Google
+                    </button>
+                )}
                 <button
                     onClick={onGuestLogin}
                     className="flex items-center justify-center gap-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 w-full border border-neutral-700/40 text-lg"

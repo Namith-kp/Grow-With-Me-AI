@@ -1,6 +1,19 @@
-import { auth, googleProvider } from '../firebase';
+
+function isAndroidWebView() {
+  // Detect Android WebView by user agent
+  return /wv/.test(navigator.userAgent) || (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent));
+}
+
+function hasTokenInUrl() {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return !!params.get('token');
+}
 
 export async function nativeGoogleLogin() {
+  if (isAndroidWebView() || hasTokenInUrl()) {
+    throw new Error('[nativeGoogleLogin.web] signInWithPopup should not be called in Android WebView or when token is present in URL.');
+  }
   try {
     console.log('[nativeGoogleLogin.web] Attempting to sign in with popup...');
     const result = await auth.signInWithPopup(googleProvider);
@@ -17,3 +30,4 @@ export async function nativeGoogleLogin() {
     throw error;
   }
 }
+import { auth, googleProvider } from '../firebase';

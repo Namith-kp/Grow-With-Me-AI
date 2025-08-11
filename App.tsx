@@ -12,6 +12,16 @@ import { findMatches } from './services/geminiService';
 import { firestoreService } from './services/firestoreService';
 import { analyticsService } from './services/analyticsService';
 import { auth, googleProvider, firebaseConfig, db } from './firebase';
+
+function getTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("token");
+}
+
+function isAndroidWebView() {
+    // Detect Android WebView by user agent
+    return /wv/.test(navigator.userAgent) || /Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent);
+}
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
@@ -92,6 +102,22 @@ const App: React.FC = () => {
                 scopes: ['profile', 'email'],
                 grantOfflineAccess: true
             });
+        }
+
+        // Native Google sign-in from Android WebView
+        const token = getTokenFromUrl();
+        if (token) {
+            const credential = firebase.auth.GoogleAuthProvider.credential(token);
+            auth.signInWithCredential(credential)
+                .then((result) => {
+                    setAuthUser(result.user);
+                    setIsGuestMode(false);
+                    setAuthLoading(false);
+                })
+                .catch((e) => {
+                    setError("Native sign-in failed: " + e.message);
+                    setAuthLoading(false);
+                });
         }
     }, []);
     const [view, setView] = useState<View>(View.LANDING);
@@ -270,13 +296,18 @@ const App: React.FC = () => {
         }
         try {
             setAuthLoading(true);
-            let googleUser;
+            let result;
             if (Capacitor.getPlatform() === 'android') {
-                googleUser = await nativeLoginAndroid();
+                result = await nativeLoginAndroid();
             } else {
-                googleUser = await nativeLoginWeb();
+                result = await nativeLoginWeb();
             }
-            console.log('Google Sign-In response:', googleUser);
+            console.log('Google Sign-In response:', result);
+            // If result.user is not set in auth state, sign in with credential (for safety)
+            if (result && result.idToken && !auth.currentUser) {
+                const credential = firebase.auth.GoogleAuthProvider.credential(result.idToken);
+                await auth.signInWithCredential(credential);
+            }
             // Successful login is handled by the onAuthStateChanged listener
         } catch (err: any) {
             console.error("Authentication error:", err);
@@ -496,7 +527,7 @@ const App: React.FC = () => {
                     userProfile={userProfile}
                 />;
             case View.AUTH:
-                return <AuthComponent onGoogleLogin={handleLogin} onGuestLogin={handleContinueAsGuest} error={error} />;
+                return <AuthComponent onGoogleLogin={handleLogin} onGuestLogin={handleContinueAsGuest} error={error} authUser={authUser} />;
             case View.ONBOARDING:
                 return <Onboarding onOnboardingComplete={handleOnboardingComplete} userProfile={userProfile} />;
             case View.DASHBOARD:
