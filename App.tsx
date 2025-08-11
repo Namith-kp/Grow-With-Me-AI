@@ -354,16 +354,26 @@ const App: React.FC = () => {
             if (isGuestMode) {
                 console.log("Guest mode: Storing profile locally.");
                 setUserProfile(newUserProfile);
+                navigate(View.DASHBOARD);
             } else {
                 await firestoreService.createUserProfile(authUser.uid, {
                     ...profileData,
                     avatarUrl: newUserProfile.avatarUrl,
                     connections: [], // Also initialize in Firestore
                 });
-                const createdProfile = await firestoreService.getUserProfile(authUser.uid);
-                setUserProfile(createdProfile);
+                // Force reload the Firebase user and profile to ensure session is active
+                await auth.currentUser?.reload();
+                const refreshedUser = auth.currentUser;
+                if (refreshedUser) {
+                    setAuthUser(refreshedUser);
+                    const createdProfile = await firestoreService.getUserProfile(refreshedUser.uid);
+                    setUserProfile(createdProfile);
+                    navigate(View.DASHBOARD);
+                } else {
+                    setError("Session lost after onboarding. Please sign in again.");
+                    navigate(View.LANDING);
+                }
             }
-            navigate(View.DASHBOARD);
         } catch (err) {
             console.error("Onboarding error:", err);
             setError("Failed to complete onboarding. Please try again.");
