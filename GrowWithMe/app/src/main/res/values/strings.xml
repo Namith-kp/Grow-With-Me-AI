@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GrowWithMe</string>
+    <!-- Replace the value below with your actual Web client ID from Firebase Console -->
+    <string name="default_web_client_id">889105420419-n9vdkh7ogbqvmgu81k4tq4r1eb9voe1a.apps.googleusercontent.com</string>
+</resources>
