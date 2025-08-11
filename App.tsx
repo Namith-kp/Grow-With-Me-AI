@@ -338,29 +338,38 @@ const App: React.FC = () => {
         }
     };
 
+    const [onboardingLoading, setOnboardingLoading] = useState(false);
     const handleOnboardingComplete = async (profileData: Omit<User, 'id' | 'avatarUrl'>) => {
         if (!authUser) return;
-
-        const newUserProfile: User = {
-            id: authUser.uid,
-            ...profileData,
-            avatarUrl: authUser.photoURL || `https://api.dicebear.com/8.x/bottts/svg?seed=${authUser.uid}`,
-            connections: [], // Initialize with an empty array
-        };
-
-        if (isGuestMode) {
-            console.log("Guest mode: Storing profile locally.");
-            setUserProfile(newUserProfile);
-        } else {
-            await firestoreService.createUserProfile(authUser.uid, {
+        setOnboardingLoading(true);
+        setError(null);
+        try {
+            const newUserProfile: User = {
+                id: authUser.uid,
                 ...profileData,
-                avatarUrl: newUserProfile.avatarUrl,
-                connections: [], // Also initialize in Firestore
-            });
-            const createdProfile = await firestoreService.getUserProfile(authUser.uid);
-            setUserProfile(createdProfile);
+                avatarUrl: authUser.photoURL || `https://api.dicebear.com/8.x/bottts/svg?seed=${authUser.uid}`,
+                connections: [], // Initialize with an empty array
+            };
+
+            if (isGuestMode) {
+                console.log("Guest mode: Storing profile locally.");
+                setUserProfile(newUserProfile);
+            } else {
+                await firestoreService.createUserProfile(authUser.uid, {
+                    ...profileData,
+                    avatarUrl: newUserProfile.avatarUrl,
+                    connections: [], // Also initialize in Firestore
+                });
+                const createdProfile = await firestoreService.getUserProfile(authUser.uid);
+                setUserProfile(createdProfile);
+            }
+            navigate(View.DASHBOARD);
+        } catch (err) {
+            console.error("Onboarding error:", err);
+            setError("Failed to complete onboarding. Please try again.");
+        } finally {
+            setOnboardingLoading(false);
         }
-        navigate(View.DASHBOARD);
     };
 
     const handleFindMatches = useCallback(async () => {
@@ -518,7 +527,7 @@ const App: React.FC = () => {
             case View.AUTH:
                 return <AuthComponent onGoogleLogin={handleLogin} onGuestLogin={handleContinueAsGuest} error={error} authUser={authUser} />;
             case View.ONBOARDING:
-                return <Onboarding onOnboardingComplete={handleOnboardingComplete} userProfile={userProfile} />;
+                return <Onboarding onOnboardingComplete={handleOnboardingComplete} userProfile={userProfile} loading={onboardingLoading} error={error} />;
             case View.DASHBOARD:
                 if (userProfile) {
                     return <Dashboard

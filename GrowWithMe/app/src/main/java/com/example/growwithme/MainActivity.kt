@@ -126,8 +126,10 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun signOutFromGoogle() {
-            activity.runOnUiThread {
-                signOutFromGoogle()
+            if (activity is MainActivity) {
+                activity.runOnUiThread {
+                    activity.signOutFromGoogle()
+                }
             }
         }
     }
