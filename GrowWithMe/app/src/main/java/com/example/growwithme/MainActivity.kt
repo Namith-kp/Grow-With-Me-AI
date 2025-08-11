@@ -28,7 +28,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun signOutFromGoogle() {
         googleSignInClient.signOut().addOnCompleteListener(this) {
-            // Optionally reload landing page or clear WebView state
+            googleSignInClient.revokeAccess().addOnCompleteListener(this) {
+                lastGoogleIdToken = null
+                runOnUiThread {
+                    try {
+                        if (isFinishing || isDestroyed) {
+                            // Don't reload if activity is finishing or destroyed
+                            return@runOnUiThread
+                        }
+                        val wv = webView
+                        if (wv != null && wv.handler != null && wv.isAttachedToWindow) {
+                            wv.loadUrl("https://namith-kp.github.io/Grow-With-Me-AI/")
+                        } else {
+                            Toast.makeText(this@MainActivity, "WebView is not ready to reload.", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Error reloading WebView: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
     }
 

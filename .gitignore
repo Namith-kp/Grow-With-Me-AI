@@ -37,3 +37,4 @@ firebase-config.ts
 *.njsproj
 *.sln
 *.sw?
+logout_crash.txt
