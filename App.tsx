@@ -189,14 +189,25 @@ const App: React.FC = () => {
                 }
             } catch (err: any) {
                 console.error("Firebase Auth persistence setup error:", err);
-                // If even this fails, the environment is fundamentally incompatible.
                 setError("Your browser does not support authentication. This may be due to private browsing settings. Please try a different browser or continue as a guest.");
                 setAuthLoading(false);
-                return; // Stop the auth process
+                return;
             }
-    // Removed misplaced <CacheProvider>
-            
-            // The onAuthStateChanged listener manages the user's session in memory.
+
+            // Always check for token param in Android WebView and sign in with it
+            const token = getTokenFromUrl();
+            if (token && (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView()))) {
+                try {
+                    const credential = firebase.auth.GoogleAuthProvider.credential(token);
+                    await auth.signInWithCredential(credential);
+                } catch (err) {
+                    console.error('Error signing in with token from URL:', err);
+                    setError('Failed to sign in with Google token. Please try again.');
+                    setAuthLoading(false);
+                    return;
+                }
+            }
+
             unsubscribe = auth.onAuthStateChanged(async (user) => {
                 setAuthLoading(true);
                 if (user && !authConfigError) {
@@ -259,7 +270,6 @@ const App: React.FC = () => {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
-                    // On logout or auth failure, return to the landing page.
                     navigate(View.LANDING);
                 }
                 setAuthLoading(false);
