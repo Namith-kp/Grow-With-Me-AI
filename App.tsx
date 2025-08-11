@@ -1,3 +1,10 @@
+// Utility: Detect if running in Android WebView
+function isAndroidWebView() {
+    return typeof navigator !== 'undefined' && (
+        /wv/.test(navigator.userAgent) ||
+        (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
+    );
+}
 import { CacheProvider } from './app/CacheContext';
 // Add GoogleAuth plugin import
 import { nativeGoogleLogin } from './utils/nativeGoogleAuth';
@@ -5,7 +12,7 @@ import { nativeGoogleLogin as nativeLoginWeb } from './utils/nativeGoogleAuth.we
 import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAuth.android';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import AuthComponent from './components/Auth';
 import Onboarding from './components/Onboarding';
@@ -68,6 +75,18 @@ const App: React.FC = () => {
     const [view, setView] = useState<View>(View.LANDING);
     const [authUser, setAuthUser] = useState<firebase.User | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
+    const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
+    const nativeUserRef = useRef(nativeUser);
+    useEffect(() => { nativeUserRef.current = nativeUser; }, [nativeUser]);
+    // JS bridge: Expose window.setNativeUser for Android to call
+    useEffect(() => {
+        (window as any).setNativeUser = (idToken: string, name: string, email: string, avatarUrl?: string) => {
+            setNativeUser({ idToken, name, email, avatarUrl });
+        };
+        return () => {
+            delete (window as any).setNativeUser;
+        };
+    }, []);
     const [matches, setMatches] = useState<EnrichedMatch[]>([]);
     const [isAuthLoading, setAuthLoading] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -170,64 +189,59 @@ const App: React.FC = () => {
             return;
         }
 
-        let unsubscribe: firebase.Unsubscribe = () => {};
+        // If running in Android WebView and nativeUser is set, use it for app logic (bypass Firebase Auth)
+        if (isAndroidWebView() && nativeUserRef.current) {
+            // Simulate a user profile for the app
+            const { idToken, name, email, avatarUrl } = nativeUserRef.current;
+            const simulatedUser: User = {
+                id: email, // Use email as unique ID for demo; in production, use a backend-verified ID
+                name,
+                email,
+                avatarUrl: avatarUrl || `https://api.dicebear.com/8.x/bottts/svg?seed=${email}`,
+                connections: [],
+                role: undefined,
+                location: '',
+                skills: [],
+                interests: [],
+                lookingFor: '',
+            };
+            setUserProfile(simulatedUser);
+            setAuthUser(null); // Not using Firebase Auth
+            setAuthLoading(false);
+            // You may want to check if the user exists in your DB and onboard if not
+            // For now, always show onboarding if role is undefined
+            if (!simulatedUser.role) {
+                navigate(View.ONBOARDING);
+            } else {
+                navigate(View.DASHBOARD);
+            }
+            return;
+        }
 
-function isAndroidWebView() {
-    return typeof navigator !== 'undefined' && (
-        /wv/.test(navigator.userAgent) ||
-        (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
-    );
-}
+        // ...existing Firebase Auth logic for web/desktop...
+        let unsubscribe: firebase.Unsubscribe = () => {};
         const setupAuth = async () => {
             setAuthLoading(true);
             try {
-                // Use SESSION persistence in all Android WebView environments
-                if (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView())) {
-                    console.log('[Auth] Setting persistence: SESSION (WebView/Android)');
-                    await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-                } else {
-                    console.log('[Auth] Setting persistence: LOCAL (default)');
-                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-                }
+                await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
             } catch (err: any) {
                 console.error("Firebase Auth persistence setup error:", err);
                 setError("Your browser does not support authentication. This may be due to private browsing settings. Please try a different browser or continue as a guest.");
                 setAuthLoading(false);
                 return;
             }
-
-            // Always check for token param in Android WebView and sign in with it
-            const token = getTokenFromUrl();
-            if (token && (typeof window !== 'undefined' && (window.location.search.includes('token') || isAndroidWebView()))) {
-                try {
-                    console.log('[Auth] Found token in URL, attempting signInWithCredential');
-                    const credential = firebase.auth.GoogleAuthProvider.credential(token);
-                    await auth.signInWithCredential(credential);
-                    console.log('[Auth] signInWithCredential succeeded');
-                } catch (err) {
-                    console.error('[Auth] Error signing in with token from URL:', err);
-                    setError('Failed to sign in with Google token. Please try again.');
-                    setAuthLoading(false);
-                    return;
-                }
-            } else {
-                console.log('[Auth] No token in URL or not in WebView, skipping signInWithCredential');
-            }
-
             unsubscribe = auth.onAuthStateChanged(async (user) => {
-                console.log('[Auth] onAuthStateChanged fired. User:', user);
                 setAuthLoading(true);
                 if (user && !authConfigError) {
                     setAuthUser(user);
                     let profile = await firestoreService.getUserProfile(user.uid);
                     if (!profile) {
-                        console.log('[Auth] No profile found, creating new user profile');
                         await firestoreService.createUserProfile(user.uid, {
                             email: user.email || '',
                             name: user.displayName || '',
                             avatarUrl: user.photoURL || '',
                             connections: [],
-                            role: undefined, // Use undefined for missing Role
+                            role: undefined,
                             location: '',
                             skills: [],
                             interests: [],
@@ -245,8 +259,6 @@ function isAndroidWebView() {
                                 console.error('Error starting user session:', error);
                             }
                         }
-                        // If the profile has a role and required fields, go to dashboard. Otherwise, go to onboarding.
-                        // Type-safe profile completeness check
                         const isProfileComplete = (
                             typeof profile.role !== 'undefined' &&
                             typeof profile.name === 'string' && profile.name.trim() !== '' &&
@@ -255,15 +267,12 @@ function isAndroidWebView() {
                             Array.isArray(profile.interests) && profile.interests.length > 0 &&
                             typeof profile.lookingFor === 'string' && profile.lookingFor.trim() !== ''
                         );
-                        console.log('[Auth] Profile loaded. isProfileComplete:', isProfileComplete, profile);
                         if (isProfileComplete) {
                             navigate(View.DASHBOARD);
                         } else {
                             navigate(View.ONBOARDING);
                         }
                     } else {
-                        // If profile creation failed, fallback to onboarding
-                        console.log('[Auth] Profile creation failed, fallback to onboarding');
                         navigate(View.ONBOARDING);
                     }
                 } else {
@@ -279,19 +288,14 @@ function isAndroidWebView() {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
-                    console.log('[Auth] No user, navigating to landing page');
                     navigate(View.LANDING);
                 }
                 setAuthLoading(false);
             });
         };
-
         setupAuth();
-
-        // Cleanup the listener on component unmount
         return () => unsubscribe();
-
-    }, [areKeysMissing, isGuestMode, navigate, authConfigError]);
+    }, [areKeysMissing, isGuestMode, navigate, authConfigError, nativeUser]);
 
     const handleLogin = async () => {
         setError(null);
