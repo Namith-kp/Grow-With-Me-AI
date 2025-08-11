@@ -230,8 +230,12 @@ const App: React.FC = () => {
         const setupAuth = async () => {
             setAuthLoading(true);
             try {
-                // Persist authentication state across browser sessions.
-                await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                // Use NONE persistence in WebView with token, LOCAL otherwise
+                if (typeof window !== 'undefined' && window.location.search.includes('token')) {
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+                } else {
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                }
             } catch (err: any) {
                 console.error("Firebase Auth persistence setup error:", err);
                 // If even this fails, the environment is fundamentally incompatible.

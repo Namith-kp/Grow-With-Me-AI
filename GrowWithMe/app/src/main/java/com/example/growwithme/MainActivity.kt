@@ -1,5 +1,6 @@
 
 
+
 package com.example.growwithme
 
 import android.app.Activity
@@ -12,6 +13,7 @@ import android.widget.Button
 import android.widget.Toast
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.JavascriptInterface
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
