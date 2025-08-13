@@ -13,6 +13,7 @@ import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAut
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Role } from './types';
 import LandingPage from './components/LandingPage';
 import AuthComponent from './components/Auth';
 import Onboarding from './components/Onboarding';
@@ -199,7 +200,7 @@ const App: React.FC = () => {
                 email,
                 avatarUrl: avatarUrl || `https://api.dicebear.com/8.x/bottts/svg?seed=${email}`,
                 connections: [],
-                role: undefined,
+                role: Role.Founder,
                 location: '',
                 skills: [],
                 interests: [],
@@ -241,7 +242,7 @@ const App: React.FC = () => {
                             name: user.displayName || '',
                             avatarUrl: user.photoURL || '',
                             connections: [],
-                            role: undefined,
+                            role: Role.Founder,
                             location: '',
                             skills: [],
                             interests: [],
