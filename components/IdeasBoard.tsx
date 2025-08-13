@@ -819,7 +819,14 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
                         tabIndex={0}
                         role="button"
                         aria-label={`View details for ${idea.title}`}
-                        onClick={() => { setSelectedIdea(idea); setDetailOpen(true); }}
+                        onClick={e => {
+                            // Only open modal if click is not on a button or interactive element
+                            const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                            if (tag !== 'button' && tag !== 'svg' && tag !== 'path' && tag !== 'input' && tag !== 'textarea' && tag !== 'a') {
+                                setSelectedIdea(idea);
+                                setDetailOpen(true);
+                            }
+                        }}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setSelectedIdea(idea); setDetailOpen(true); } }}
                     >
                         <IdeaCard

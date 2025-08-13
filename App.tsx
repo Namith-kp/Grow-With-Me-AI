@@ -73,7 +73,7 @@ const App: React.FC = () => {
                 });
         }
     }, []);
-    const [view, setView] = useState<View>(View.LANDING);
+    const [view, setView] = useState<View>(View.DASHBOARD);
     const [authUser, setAuthUser] = useState<firebase.User | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
     const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
@@ -260,19 +260,8 @@ const App: React.FC = () => {
                                 console.error('Error starting user session:', error);
                             }
                         }
-                        const isProfileComplete = (
-                            typeof profile.role !== 'undefined' &&
-                            typeof profile.name === 'string' && profile.name.trim() !== '' &&
-                            typeof profile.location === 'string' && profile.location.trim() !== '' &&
-                            Array.isArray(profile.skills) && profile.skills.length > 0 &&
-                            Array.isArray(profile.interests) && profile.interests.length > 0 &&
-                            typeof profile.lookingFor === 'string' && profile.lookingFor.trim() !== ''
-                        );
-                        if (isProfileComplete) {
-                            navigate(View.DASHBOARD);
-                        } else {
-                            navigate(View.ONBOARDING);
-                        }
+                        // Relaxed: Show dashboard if profile exists
+                        navigate(View.DASHBOARD);
                     } else {
                         navigate(View.ONBOARDING);
                     }
@@ -289,7 +278,7 @@ const App: React.FC = () => {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
-                    navigate(View.LANDING);
+                    navigate(View.DASHBOARD);
                 }
                 setAuthLoading(false);
             });
