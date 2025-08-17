@@ -159,9 +159,11 @@ export interface Negotiation {
     investorName: string;
     investorAvatar: string;
     founderId: string;
-    status: 'pending' | 'active' | 'closed' | 'rejected';
+    status: 'pending' | 'active' | 'closed' | 'rejected' | 'accepted';
     timestamp: Date;
     offers: Offer[];
+    finalInvestment?: number;
+    finalEquity?: number;
     isRead?: boolean;
 }
 

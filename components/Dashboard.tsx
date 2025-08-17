@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, EnrichedMatch, Role } from '../types';
 import { ZapIcon, SettingsIcon, UserIcon, MessageSquareIcon, StarIcon, SearchIcon, UserPlusIcon, CheckCheckIcon } from './icons';
+import AnalyticsDashboard from './AnalyticsDashboard';
 import ProfileCard from './ProfileCard';
 import FeedbackModal from './FeedbackModal';
 import { firestoreService } from '../services/firestoreService';
@@ -182,6 +183,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [connectionIds, setConnectionIds] = useState<string[]>([]);
     const [infoModal, setInfoModal] = useState<{ title: string; message: string; type: 'success' | 'error' } | null>(null);
     const [activeTab, setActiveTab] = useState<'matches'>('matches');
+    const [totalInvested, setTotalInvested] = useState<number>(0);
+
+    React.useEffect(() => {
+        async function fetchTotalInvested() {
+            if (user.role === Role.Founder) {
+                const total = await firestoreService.getTotalInvestedAmountForIdeas(user.id);
+                setTotalInvested(total);
+            }
+        }
+        fetchTotalInvested();
+    }, [user.id, user.role]);
 
     const handleConnect = async (connectUser: User) => {
         if (!user) return;
@@ -210,15 +222,23 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     return (
-        <div className="p-4 sm:p-6 md:p-8 bg-neutral-950 min-h-screen text-white">
-            <div className="max-w-7xl mx-auto">
+        <div className="relative min-h-screen w-full overflow-hidden bg-black font-sans">
+            {/* Gradient background and blurred circles for glassmorphism effect */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-black to-slate-950" />
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse-slow" />
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
+            </div>
+
+            <div className="relative z-10 max-w-7xl mx-auto py-12 px-4 sm:px-8">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <h1 className="text-3xl font-bold text-white">Your Dashboard</h1>
+                    <h1 className="text-4xl font-light text-white">Your Dashboard</h1>
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onFindMatches}
                             disabled={isLoading}
-                            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-purple-800 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-6 rounded-lg shadow-lg transition-all duration-200 disabled:bg-emerald-800 disabled:cursor-not-allowed"
                         >
                             <ZapIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                             {isLoading ? 'Finding...' : hasActiveSearch ? 'Refresh Matches' : 'Find Matches'}
@@ -228,78 +248,59 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="mb-8">
                     <div className="relative">
-                        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" />
                         <input
                             type="text"
                             placeholder="Search matches by keyword, skill, or location..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg py-3 pl-12 pr-4 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                            className="w-full bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg py-3 pl-12 pr-4 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                         />
                     </div>
                 </div>
 
-                {/* Removed negotiations tab, now in sidebar */}
-                <div className="mb-8 border-b border-neutral-800 flex space-x-4">
-                    <button onClick={() => setActiveTab('matches')} className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'matches' ? 'text-white border-b-2 border-purple-500' : 'text-neutral-400 hover:text-white'}`}> 
+                <div className="mb-8 border-b border-white/10 flex space-x-4">
+                    <button onClick={() => setActiveTab('matches')} className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'matches' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-neutral-400 hover:text-white'}`}> 
                         Matches
                     </button>
                 </div>
 
                 {activeTab === 'matches' && (
-                    <>
-                        {viewingProfile ? (
-                            <ProfileCard
-                                user={viewingProfile}
-                                onClose={() => setViewingProfile(null)}
-                                onConnect={handleConnect}
-                                onMessage={onMessage}
-                                isOwnProfile={false}
-                                onViewConnections={handleViewConnections}
-                                isConnected={user.connections.includes(viewingProfile.id)}
-                                isPending={user.pendingConnections?.includes(viewingProfile.id)}
-                            />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {isLoading ? (
+                            Array.from({ length: 3 }).map((_, idx) => <SkeletonLoader key={idx} />)
+                        ) : matches.length > 0 ? (
+                            matches.map((match) => (
+                                <MatchCard
+                                    key={match.user.id}
+                                    match={match}
+                                    onMessage={onMessage}
+                                    onConnect={handleConnect}
+                                    onFeedback={(user) => { setFeedbackUser(user); setFeedbackModalOpen(true); }}
+                                    onViewProfile={setViewingProfile}
+                                    isConnected={match.isConnected}
+                                    isPending={match.isPending}
+                                />
+                            ))
                         ) : (
-                            <div>
-                                {isLoading && !hasActiveSearch ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 justify-center custom1366:grid-cols-2 custom1366:gap-3">
-                                        {[...Array(6)].map((_, i) => <SkeletonLoader key={i} />)}
-                                    </div>
-                                ) : error ? (
-                                    <div className="text-center py-12 text-red-400 bg-red-900/20 rounded-lg">
-                                        <p className="text-xl font-semibold">Error loading matches</p>
-                                        <p>{error}</p>
-                                    </div>
-                                ) : hasActiveSearch ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 justify-center">
-                                        {matches.map((match) => (
-                                            <MatchCard
-                                                key={match.user.id}
-                                                match={match}
-                                                onMessage={onMessage}
-                                                onConnect={handleConnect}
-                                                onFeedback={(user) => {
-                                                    setFeedbackUser(user);
-                                                    setFeedbackModalOpen(true);
-                                                }}
-                                                onViewProfile={(user) => setViewingProfile(user)}
-                                                isConnected={user.connections.includes(match.user.id)}
-                                                isPending={user.pendingConnections?.includes(match.user.id)}
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-20 bg-neutral-900 border-2 border-dashed border-neutral-800 rounded-lg">
-                                        <h2 className="text-2xl font-bold text-white">Welcome, {user.name}!</h2>
-                                        <p className="text-neutral-400 mt-2">Click "Find Matches" to discover your ideal co-founder or team member.</p>
-                                    </div>
-                                )}
-                            </div>
+                            <div className="text-neutral-400 col-span-full text-center py-12">No matches found. Try refreshing or adjusting your search.</div>
                         )}
-                    </>
+                    </div>
                 )}
-
-                {/* Negotiations section moved to sidebar view */}
+                {/* Analytics tab for founder: pass totalInvested to AnalyticsDashboard */}
+                {activeTab === 'analytics' && user.role === Role.Founder && (
+                    <AnalyticsDashboard
+                        data={{
+                            userEngagement: { dailyActiveUsers: 0, monthlyActiveUsers: 0, averageSessionDuration: 0 },
+                            matchSuccess: { totalMatchesMade: 0, successfulConnections: 0, successRate: 0 },
+                            platformPerformance: { dau_data: [], match_rate_data: [] }
+                        }}
+                        totalIdeas={0}
+                        totalNegotiations={0}
+                        totalDealsAccepted={0}
+                        totalInvested={totalInvested}
+                    />
+                )}
             </div>
 
             {feedbackModalOpen && feedbackUser && (

@@ -392,9 +392,26 @@ export const firestoreService = {
         return unsubscribe;
     },
 
-    updateNegotiationStatus: async (negotiationId: string, status: Negotiation['status']): Promise<void> => {
+    updateNegotiationStatus: async (negotiationId: string, status: Negotiation['status'], finalInvestment?: number, finalEquity?: number): Promise<void> => {
         const negotiationRef = db.collection('negotiations').doc(negotiationId);
-        await negotiationRef.update({ status });
+        const updateData: any = { status };
+        if (status === 'accepted' && typeof finalInvestment === 'number' && typeof finalEquity === 'number') {
+            updateData.finalInvestment = finalInvestment;
+            updateData.finalEquity = finalEquity;
+        }
+        await negotiationRef.update(updateData);
+    },
+    getTotalInvestedAmountForIdeas: async (founderId: string): Promise<number> => {
+        // Get all accepted negotiations for this founder's ideas
+        const snapshot = await db.collection('negotiations').where('founderId', '==', founderId).where('status', '==', 'accepted').get();
+        let total = 0;
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (typeof data.finalInvestment === 'number') {
+                total += data.finalInvestment;
+            }
+        });
+        return total;
     },
 
     addOfferToNegotiation: async (negotiationId: string, offer: Offer): Promise<void> => {

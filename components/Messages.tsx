@@ -39,26 +39,26 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, onSelectChat, c
     );
 
     return (
-        <div className="space-y-6 mt-9">
+    <div className="space-y-6 mt-9">
             <h1 className="text-3xl font-bold text-white">Messages</h1>
             <p className="text-neutral-400">Start a new conversation or continue an existing one.</p>
             
             <div className="space-y-8">
                 <div className="relative">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500"/>
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400"/>
                     <input
                         type="text"
                         placeholder="Search by name..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 pl-10 pr-4 text-white focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg py-2 pl-10 pr-4 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                     />
                 </div>
 
                 {filteredChats.length > 0 && (
                     <div>
                         <h2 className="text-xl font-bold text-white mb-4">Active Chats</h2>
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl">
+                        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
                             <ul className="divide-y divide-neutral-800">
                                 {filteredChats.map(chat => {
                                     const partner = chat.participantDetails.find(p => p.id !== currentUser.id);
@@ -103,7 +103,7 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, onSelectChat, c
                 {filteredConnections.length > 0 && (
                      <div>
                         <h2 className="text-xl font-bold text-white mb-4">Start a New Conversation</h2>
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl">
+                        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
                             <ul className="space-y-1">
                                 {filteredConnections.map(connection => (
                                     <li key={connection.id} onClick={() => onSelectChat(connection)} className="p-3 flex items-center cursor-pointer hover:bg-neutral-800/50 transition-colors rounded-2xl">
@@ -123,7 +123,7 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, onSelectChat, c
                 )}
 
                 {filteredConnections.length === 0 && filteredChats.length === 0 && (
-                    <div className="text-center py-16 px-6 bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-2xl">
+                    <div className="text-center py-16 px-6 bg-white/5 backdrop-blur-sm border-2 border-dashed border-white/10 rounded-2xl shadow-lg">
                         <h3 className="text-xl font-semibold mt-4 text-white">No one to message</h3>
                         <p className="text-neutral-400 mt-2 max-w-md mx-auto">
                             {searchTerm ? `No connections found for "${searchTerm}".` : "Connect with other users to start a conversation."}

@@ -113,7 +113,7 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
     };
 
     return (
-        <form onSubmit={handleSubmit} className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10 shadow-lg space-y-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <LightbulbIcon className="w-6 h-6 text-yellow-400" />
                 {editingIdea ? 'Edit Your Startup Idea' : 'Post a New Startup Idea'}
@@ -277,7 +277,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 
     // Remove extra bottom padding, will move action icons above Manage Team button for founders
     return (
-        <div className={"bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 flex flex-col h-full min-h-[110px] sm:min-h-[220px] relative pb-3 sm:pb-6"}>
+        <div className={"bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3 sm:p-6 flex flex-col h-full min-h-[110px] sm:min-h-[220px] relative pb-3 sm:pb-6 shadow-lg"}>
             {/* Top row: avatar, name, tag, actions */}
             <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-4">
                 <div className="flex items-center gap-2 sm:gap-4 min-w-0">
