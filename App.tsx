@@ -73,7 +73,7 @@ const App: React.FC = () => {
                 });
         }
     }, []);
-    const [view, setView] = useState<View>(View.DASHBOARD);
+    const [view, setView] = useState<View>(View.LANDING);
     const [authUser, setAuthUser] = useState<firebase.User | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
     const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
@@ -278,7 +278,7 @@ const App: React.FC = () => {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
-                    navigate(View.DASHBOARD);
+                    navigate(View.LANDING);
                 }
                 setAuthLoading(false);
             });
