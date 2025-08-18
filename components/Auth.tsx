@@ -34,64 +34,53 @@ const AuthComponent = ({ onGoogleLogin, onGuestLogin, error, authUser }: AuthCom
         }
     };
     return (
-        <div className="relative flex flex-col items-center justify-center min-h-screen w-full px-2 sm:px-4 pt-8 pb-8 text-center overflow-hidden z-10">
-        {/* 3D Globe and FloatingShapes Background */}
-        <div className="absolute top-0 left-0 w-full h-full z-10">
-            <Canvas>
-                <ambientLight intensity={0.5} />
-                <pointLight position={[10, 10, 10]} />
-                <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.4} />
-                <Globe />
-                <FloatingShapes />
-            </Canvas>
-        </div>
-        <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-black/60 [mask-image:radial-gradient(ellipse_at_center,transparent_30%,black)] z-20"></div>
-        {/* Animated Gradient Background Overlay - covers entire screen */}
-        <div className="fixed inset-0 z-0 pointer-events-none w-screen h-screen min-h-screen">
-            <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-gradient-to-br from-purple-600 via-fuchsia-500 to-blue-500 opacity-30 rounded-full blur-3xl animate-pulse-slow" />
-            <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-400 via-purple-400 to-fuchsia-400 opacity-20 rounded-full blur-2xl animate-pulse-slow" />
-            <div className="absolute inset-0 bg-black bg-opacity-80 backdrop-blur-2xl" />
-        </div>
-        {/* Enhanced App Logo and Name */}
-        <div className="flex flex-col items-center z-30 mb-10 ">
-            <div className="relative flex items-center justify-center">
-                <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-gradient-to-br from-purple-500/40 via-fuchsia-400/30 to-blue-400/30 blur-xl animate-pulse-slow" />
-                <LogoIcon className="w-20 h-20 sm:w-28 sm:h-28 text-purple-500 drop-shadow-2xl z-10" />
+        <div className="relative min-h-screen w-full overflow-hidden bg-black">
+            {/* Gradient background, blurred circles, grid pattern */}
+            <div className="fixed inset-0 z-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-black to-slate-950" />
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse-slow" />
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
             </div>
-            <span className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-fuchsia-300 to-blue-400 drop-shadow-xl tracking-tight animate-fade-in-scale shadow-lg">
-                Grow With Me
-            </span>
-            <span className="mt-2 text-base sm:text-lg text-neutral-300 font-medium tracking-wide opacity-80 animate-fade-in-scale delay-200">
-                AI-powered co-founder & investor matchmaking
-            </span>
-        </div>
-        {/* Auth Card */}
-        <div className="relative max-w-md w-full bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-800/90 border border-purple-700/30 rounded-2xl p-8 space-y-6 animate-fade-in-scale shadow-2xl shadow-purple-900/20 z-30 backdrop-blur-xl">
-            <h2 className="text-3xl font-extrabold text-white drop-shadow-lg">Join the Network</h2>
-            <p className="text-neutral-300 text-lg font-medium">
-                Sign in to save your profile and connect with others, or continue as a guest to explore the platform.
-            </p>
-            <div className="flex flex-col space-y-4 pt-4">
-                {error && <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-sm mb-4 text-left">{error}</div>}
-                {/* Always show Google sign-in button if not authenticated */}
-                {!authUser && (
+            {/* Logo and heading */}
+            <div className="flex flex-col items-center z-30 pt-10 mb-5 relative">
+                <div className="relative flex items-center justify-center mb-2">
+                    <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-gradient-to-br from-purple-500/40 via-fuchsia-400/30 to-blue-400/30 blur-xl animate-pulse-slow" />
+                    <LogoIcon className="w-20 h-20 sm:w-28 sm:h-28 text-emerald-400 drop-shadow-2xl z-10" />
+                </div>
+                <span className="text-3xl md:text-4xl font-light mb-4">
+                    Sign in to
+                    <span className="text-emerald-400 font-light"> Grow With Me</span>
+                    
+                </span>
+                
+            </div>
+            {/* Auth Card - glassmorphism, rounded, shadow, border */}
+            <div className="relative max-w-md w-full mx-auto bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-800/90 border border-emerald-400/20 rounded-2xl p-8 space-y-6 shadow-2xl shadow-emerald-900/20 z-30 backdrop-blur-xl">
+                <h2 className="text-3xl font-light text-white mb-2">Join the Network</h2>
+                <p className="text-neutral-300 text-lg font-light">
+                    Sign in to save your profile and connect with others, or continue as a guest to explore the platform.
+                </p>
+                <div className="flex flex-col space-y-4 pt-4">
+                    {error && <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-sm mb-4 text-left">{error}</div>}
+                    {!authUser && (
+                        <button
+                            onClick={handleGoogleSignIn}
+                            className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-emerald-600/20 text-lg tracking-wide border-2 border-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-400/30"
+                        >
+                            <GoogleIcon className="w-6 h-6" />
+                            Sign In with Google
+                        </button>
+                    )}
                     <button
-                        onClick={handleGoogleSignIn}
-                        className="flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 via-fuchsia-500 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-extrabold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/20 text-lg tracking-wide border-2 border-white/10 focus:outline-none focus:ring-4 focus:ring-purple-400/30"
+                        onClick={onGuestLogin}
+                        className="flex items-center justify-center gap-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 w-full border border-neutral-700/40 text-lg"
                     >
-                        <GoogleIcon className="w-6 h-6" />
-                        Sign In with Google
+                        Continue as Guest
                     </button>
-                )}
-                <button
-                    onClick={onGuestLogin}
-                    className="flex items-center justify-center gap-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 w-full border border-neutral-700/40 text-lg"
-                >
-                    Continue as Guest
-                </button>
+                </div>
             </div>
         </div>
-    </div>
     );
 }
 

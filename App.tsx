@@ -45,6 +45,19 @@ function getTokenFromUrl() {
 
 
 const App: React.FC = () => {
+    // Sync SPA view with browser navigation (back/forward)
+    useEffect(() => {
+        const handlePopState = () => {
+            const path = window.location.pathname;
+            if (path.endsWith('/Grow-With-Me-AI/') || path === '/Grow-With-Me-AI/') {
+                setView(View.LANDING);
+            } else if (path.endsWith('/Grow-With-Me-AI/auth')) {
+                setView(View.AUTH);
+            } // Add more routes as needed
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
     useEffect(() => {
         const platform = Capacitor.getPlatform();
         if (platform === 'android') {
@@ -73,7 +86,14 @@ const App: React.FC = () => {
                 });
         }
     }, []);
-    const [view, setView] = useState<View>(View.LANDING);
+    // Set initial view based on URL path
+    const initialView = (() => {
+        const path = window.location.pathname;
+        if (path === '/Grow-With-Me-AI/auth' || path === '/Grow-With-Me-AI/auth/') return View.AUTH;
+        if (path === '/Grow-With-Me-AI/' || path === '/Grow-With-Me-AI') return View.LANDING;
+        return View.LANDING;
+    })();
+    const [view, setView] = useState<View>(initialView);
     const [authUser, setAuthUser] = useState<firebase.User | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
     const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
@@ -278,7 +298,12 @@ const App: React.FC = () => {
                     setMatches([]);
                     setSearchQuery('');
                     setCurrentSessionId(null);
-                    navigate(View.LANDING);
+                    const path = window.location.pathname;
+                    if (path === '/Grow-With-Me-AI/auth' || path === '/Grow-With-Me-AI/auth/') {
+                        navigate(View.AUTH);
+                    } else {
+                        navigate(View.LANDING);
+                    }
                 }
                 setAuthLoading(false);
             });
@@ -341,6 +366,7 @@ const App: React.FC = () => {
             setUserProfile(null);
             setMatches([]);
             setSearchQuery('');
+            window.history.pushState({}, '', '/Grow-With-Me-AI/');
             navigate(View.LANDING);
         } else {
             // onAuthStateChanged will handle the state reset after signOut
@@ -551,7 +577,10 @@ const App: React.FC = () => {
         switch (view) {
             case View.LANDING:
                 return <LandingPage
-                    onGetStarted={() => navigate(View.AUTH)}
+                    onGetStarted={() => {
+                        window.history.pushState({}, '', '/Grow-With-Me-AI/auth');
+                        navigate(View.AUTH);
+                    }}
                     authUser={authUser}
                     userProfile={userProfile}
                 />;
@@ -624,7 +653,6 @@ const App: React.FC = () => {
                 return <Messages 
                     chats={chats} 
                     currentUser={userProfile} 
-                    onSelectChat={setSelectedUserForChat}
                     connections={connections}
                 />;
 
@@ -659,13 +687,7 @@ const App: React.FC = () => {
                 <main className={`flex-grow p-4 sm:p-8 pt-16 lg:pt-8 transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''}`}>
                     {renderContent()}
                 </main>
-                {selectedUserForChat && userProfile && (
-                    <ChatModal 
-                        user={selectedUserForChat} 
-                        currentUser={userProfile} 
-                        onClose={() => setSelectedUserForChat(null)} 
-                    />
-                )}
+                {/* ChatModal removed; chat will be rendered inline in Messages */}
             </div>
         </CacheProvider>
     );

@@ -248,13 +248,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="mb-8">
                     <div className="relative">
-                        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" />
+                        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 drop-shadow" />
                         <input
                             type="text"
                             placeholder="Search matches by keyword, skill, or location..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg py-3 pl-12 pr-4 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg py-3 pl-16 pr-4 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                         />
                     </div>
                 </div>
