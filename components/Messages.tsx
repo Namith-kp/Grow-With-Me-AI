@@ -33,9 +33,9 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections }) 
     );
 
     return (
-    <div className="flex flex-row h-screen w-full bg-neutral-950 rounded-none overflow-hidden shadow-none m-0 p-0">
+    <div className="fixed top-0 left-0 w-full h-screen z-40 bg-neutral-950 rounded-none overflow-hidden shadow-none ml-0 p-0 flex">
             {/* Left: Chat list */}
-            <div className="w-80 flex-shrink-0 border-r-2 border-white/10 bg-black flex flex-col m-0 p-0">
+            <div className="w-80 lg:w-96 flex-shrink-0 border-r-2 border-white/10 bg-black flex flex-col m-0 p-0">
                 <div className="p-4 border-b border-neutral-800">
                     <h1 className="text-2xl font-bold text-white">Messages</h1>
                     <input
@@ -93,12 +93,14 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections }) 
                 </div>
             </div>
             {/* Right: Chat panel */}
-            <div className="flex-1 min-w-0 h-full overflow-hidden m-0 p-0 bg-black">
-                {selectedUserForChat ? (
-                    <ChatPanel user={selectedUserForChat} currentUser={currentUser} />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-neutral-400 text-xl">Select a chat to start messaging</div>
-                )}
+            <div className="flex-1 min-w-0 h-full overflow-hidden m-0 p-0 bg-black flex justify-center">
+                <div className="w-full max-w-2xl h-full">
+                    {selectedUserForChat ? (
+                        <ChatPanel user={selectedUserForChat} currentUser={currentUser} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-neutral-400 text-xl">Select a chat to start messaging</div>
+                    )}
+                </div>
             </div>
         </div>
     );

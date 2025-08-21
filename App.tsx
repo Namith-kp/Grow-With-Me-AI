@@ -15,6 +15,8 @@ import { Capacitor } from '@capacitor/core';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Role } from './types';
 import LandingPage from './components/LandingPage';
+import LandingPageSquares from './components/Landing/LandingPageSquares';
+import LandingPageLightRays from './components/Landing/LandingPageLightRays';
 import AuthComponent from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
@@ -576,14 +578,8 @@ const App: React.FC = () => {
 
         switch (view) {
             case View.LANDING:
-                return <LandingPage
-                    onGetStarted={() => {
-                        window.history.pushState({}, '', '/Grow-With-Me-AI/auth');
-                        navigate(View.AUTH);
-                    }}
-                    authUser={authUser}
-                    userProfile={userProfile}
-                />;
+                // return <LandingPageLightRays onGetStarted={() => navigate(View.AUTH)} authUser={authUser} userProfile={userProfile} />;
+                return <LandingPageLightRays/>;
             case View.AUTH:
                 return <AuthComponent onGoogleLogin={handleLogin} onGuestLogin={handleContinueAsGuest} error={error} authUser={authUser} />;
             case View.ONBOARDING:

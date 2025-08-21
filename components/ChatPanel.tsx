@@ -66,11 +66,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser }) => {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex items-center gap-3 p-4 border-b border-neutral-800 bg-black">
+            <div className="flex items-center gap-3 p-4 border-b border-neutral-800 bg-black sticky top-0 z-10">
                 <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full" />
                 <h3 className="font-bold text-lg text-white">{user.name}</h3>
             </div>
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-black">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-black flex flex-col-reverse">
+                <div ref={messagesEndRef} />
                 {messages.map(msg => (
                     <div key={msg.id} className={`flex gap-3 ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}> 
                         {msg.senderId !== currentUser.id && <img src={user.avatarUrl} alt={`${user.name}'s avatar`} className="w-8 h-8 rounded-full" />}
@@ -81,7 +82,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser }) => {
                         {msg.senderId === currentUser.id && <img src={currentUser.avatarUrl} alt="Your avatar" className="w-8 h-8 rounded-full" />}
                     </div>
                 ))}
-                <div ref={messagesEndRef} />
             </div>
             <form onSubmit={handleSend} className="p-4 border-t border-neutral-800 bg-black">
                 <div className="flex items-center bg-white/5 rounded-lg">
