@@ -25,7 +25,12 @@ jobs:
         
     - name: Install dependencies
       run: |
-        npm ci --legacy-peer-deps || npm install --legacy-peer-deps || npm ci --force
+        # Try clean install first
+        npm ci --legacy-peer-deps || \
+        # If that fails, regenerate lock file and install
+        (rm -f package-lock.json && npm install --legacy-peer-deps) || \
+        # Last resort: force install
+        npm ci --force
       
     - name: Build
       run: npm run build
