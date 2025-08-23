@@ -6,6 +6,29 @@ import JoinRequests from './JoinRequests';
 import TeamManagementModal from './TeamManagementModal';
 import NegotiationDeck from './NegotiationDeck';
 import IdeaDetailModal from './IdeaDetailModal';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../utils/cn';
+
+// Custom hook for responsive animation timing
+const useResponsiveAnimation = () => {
+    const [isLargeScreen, setIsLargeScreen] = useState(false);
+    
+    useEffect(() => {
+        const checkScreenSize = () => {
+            setIsLargeScreen(window.innerWidth >= 1024);
+        };
+        
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+        
+        return () => window.removeEventListener('resize', checkScreenSize);
+    }, []);
+    
+    return {
+        enterDuration: isLargeScreen ? 0.5 : 0.2,
+        exitDuration: isLargeScreen ? 0.5: 0.15,
+    };
+};
 
 interface IdeaPostFormProps {
     user: User;
@@ -113,38 +136,38 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
     };
 
     return (
-        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10 shadow-lg space-y-4">
+        <form onSubmit={handleSubmit} className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm p-6 rounded-2xl border border-slate-800/50 shadow-2xl shadow-slate-500/10 space-y-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <LightbulbIcon className="w-6 h-6 text-yellow-400" />
+                <LightbulbIcon className="w-6 h-6 text-amber-400" />
                 {editingIdea ? 'Edit Your Startup Idea' : 'Post a New Startup Idea'}
             </h2>
             <div>
-                <label htmlFor="title" className="block text-sm font-medium text-neutral-300 mb-1">Idea Title</label>
+                <label htmlFor="title" className="block text-sm font-medium text-slate-300 mb-1">Idea Title</label>
                 <input
                     id="title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g., AI-Powered Personal Chef"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                    className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                 />
             </div>
             <div>
-                <label htmlFor="description" className="block text-sm font-medium text-neutral-300 mb-1">Detailed Description</label>
+                <label htmlFor="description" className="block text-sm font-medium text-slate-300 mb-1">Detailed Description</label>
                 <textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe your vision, the problem it solves, and your target audience."
                     rows={4}
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                    className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                 />
             </div>
             <div>
-                <label htmlFor="skills" className="block text-sm font-medium text-neutral-300 mb-1">Required Skills</label>
+                <label htmlFor="skills" className="block text-sm font-medium text-slate-300 mb-1">Required Skills</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                     {requiredSkills.map(skill => (
-                        <div key={skill} className="flex items-center gap-1 bg-purple-900/50 text-purple-300 px-2 py-1 rounded-full text-sm">
+                        <div key={skill} className="flex items-center gap-1 bg-purple-900/30 text-purple-300 px-2 py-1 rounded-full text-sm border border-purple-700/30">
                             {skill}
                             <button type="button" onClick={() => removeSkill(skill)} className="text-purple-300 hover:text-white">
                                 &times;
@@ -159,41 +182,41 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
                     onChange={(e) => setSkillInput(e.target.value)}
                     onKeyDown={handleSkillKeyDown}
                     placeholder="e.g., React, Python, Marketing... (Press Enter to add)"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                    className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                 />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label htmlFor="targetInvestment" className="block text-sm font-medium text-neutral-300 mb-1">Target Investment ($)</label>
+                    <label htmlFor="targetInvestment" className="block text-sm font-medium text-slate-300 mb-1">Target Investment ($)</label>
                     <input
                         id="targetInvestment"
                         type="number"
                         value={targetInvestment}
                         onChange={(e) => setTargetInvestment(e.target.value)}
                         placeholder="e.g., 50000"
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                     />
                 </div>
                 <div>
-                    <label htmlFor="equityOffered" className="block text-sm font-medium text-neutral-300 mb-1">Equity Offered (%)</label>
+                    <label htmlFor="equityOffered" className="block text-sm font-medium text-slate-300 mb-1">Equity Offered (%)</label>
                     <input
                         id="equityOffered"
                         type="number"
                         value={equityOffered}
                         onChange={(e) => setEquityOffered(e.target.value)}
                         placeholder="e.g., 10"
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                     />
                 </div>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex gap-4">
                 {editingIdea && (
-                    <button type="button" onClick={onCancelEdit} className="w-full flex items-center justify-center gap-2 bg-neutral-600 hover:bg-neutral-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    <button type="button" onClick={onCancelEdit} className="w-full flex items-center justify-center gap-2 bg-slate-700/50 hover:bg-slate-600/50 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 border border-slate-600/30">
                         Cancel
                     </button>
                 )}
-                <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50">
+                <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:opacity-50">
                     <PlusIcon className="w-5 h-5" />
                     {isSubmitting ? (editingIdea ? 'Saving...' : 'Posting...') : (editingIdea ? 'Save Changes' : 'Post Idea')}
                 </button>
@@ -216,9 +239,10 @@ interface IdeaCardProps {
     onStartNegotiation: (idea: Idea) => void;
     negotiationStatuses?: Record<string, string>;
     investorCounts?: Record<string, number>;
+    onNavigateToNegotiation?: (negotiationId: string) => void;
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendingRequest, onManageTeam, joinRequests, onLike, onComment, onDeleteComment, onEdit, onStartNegotiation, negotiationStatuses, investorCounts }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendingRequest, onManageTeam, joinRequests, onLike, onComment, onDeleteComment, onEdit, onStartNegotiation, negotiationStatuses, investorCounts, onNavigateToNegotiation }) => {
     const isFounder = idea.founderId === user.id;
     const canJoin = user.role === Role.Developer && !idea.team.includes(user.id);
     const hasJoined = idea.team.includes(user.id);
@@ -230,6 +254,8 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
     const [showNegotiation, setShowNegotiation] = useState(false);
     const [negotiation, setNegotiation] = useState(null);
     const [negotiationLoading, setNegotiationLoading] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const { enterDuration, exitDuration } = useResponsiveAnimation();
 
     const userHasLiked = idea.likes?.includes(user.id);
 
@@ -241,16 +267,11 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
         }
     };
 
-    // Investor: Show negotiation deck button
+    // Investor: Navigate to negotiation tab
     const handleOpenNegotiation = async () => {
         setNegotiationLoading(true);
         try {
             // Try to find or create negotiation for this idea and investor
-            const negotiationId = `${idea.id}_${user.id}`;
-            const negotiationRef = firestoreService.getNegotiationsForInvestor
-                ? null // We'll use a fetch below
-                : null;
-            // Try to fetch negotiation
             let negotiationData = null;
             // Try to get negotiation from Firestore
             const negotiations = await new Promise<Negotiation[]>(resolve => {
@@ -266,8 +287,11 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                 });
                 negotiationData = negotiations2.find((n) => n.ideaId === idea.id);
             }
-            setNegotiation(negotiationData);
-            setShowNegotiation(true);
+            
+            // Navigate to negotiations tab with the specific negotiation
+            if (onNavigateToNegotiation && negotiationData) {
+                onNavigateToNegotiation(negotiationData.id);
+            }
         } catch (err) {
             alert('Failed to open negotiation.');
         } finally {
@@ -277,285 +301,326 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 
     // Remove extra bottom padding, will move action icons above Manage Team button for founders
     return (
-        <div className={"bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3 sm:p-6 flex flex-col h-full min-h-[110px] sm:min-h-[220px] relative pb-3 sm:pb-6 shadow-lg"}>
-            {/* Top row: avatar, name, tag, actions */}
-            <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-4">
-                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                    <img src={idea.founderAvatar} alt={idea.founderName} className="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-neutral-700 shrink-0" />
-                    <div className="min-w-0">
-                        <h3 className="text-base sm:text-xl font-bold text-white break-words">{idea.title}</h3>
-                        <div className="flex items-center gap-1">
-                            <span className="text-xs sm:text-sm text-neutral-400 truncate">{idea.founderName}</span>
-                            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-purple-900/60 text-purple-300">Founder</span>
+        <div 
+            className="relative group block p-2 h-full w-full"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {/* Aceternity UI Hover Background Effect - Smooth sliding without blinking */}
+            <AnimatePresence mode="wait">
+                {isHovered && (
+                    <motion.span
+                        className="absolute inset-0 h-full w-full bg-slate-800/[0.8] block rounded-3xl"
+                        layoutId="ideaHoverBackground"
+                        initial={{ opacity: 0 }}
+                        animate={{
+                            opacity: 1,
+                            transition: { 
+                                duration: enterDuration,
+                                ease: "easeOut"
+                            },
+                        }}
+                        exit={{
+                            opacity: 0,
+                            transition: { 
+                                duration: 0.05,
+                                ease: "linear"
+                            },
+                        }}
+                        style={{
+                            willChange: 'opacity, transform',
+                            transformOrigin: 'center',
+                        }}
+                        layout
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Card content */}
+            <div className="relative z-20 bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 h-full flex flex-col">
+                {/* Top row: avatar, name, tag, actions */}
+                <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-4">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                        <img src={idea.founderAvatar} alt={idea.founderName} className="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-slate-700 shrink-0 shadow-lg" />
+                        <div className="min-w-0">
+                            <h3 className="text-base sm:text-xl font-bold text-white break-words">{idea.title}</h3>
+                            <div className="flex items-center gap-1">
+                                <span className="text-xs sm:text-sm text-slate-400 truncate">{idea.founderName}</span>
+                                <span className={cn(
+                                    "ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold",
+                                    "bg-purple-900/30 text-purple-300 border border-purple-700/30"
+                                )}>Founder</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {/* Desktop: show actions in top right (no duplicate for founder) */}
-                {/* Desktop: action icons are now shown beside join/negotiate buttons, so this is removed to avoid duplicates */}
-            </div>
-            {/* Mobile: show actions between description and Manage Team for founders, else in bottom right */}
-            {/* ...existing code... */}
-            {/* ...existing code... */}
-            {/* Place founder mobile actions after description/details and before bottom row */}
-            {/* ...existing code... */}
-            {/* ...existing code... */}
-            {/* Description and details (hidden/minimized on mobile) */}
-            <div className="flex flex-col gap-1 sm:gap-2 flex-grow">
-                <p className="text-neutral-300 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 sm:line-clamp-4">{idea.description}</p>
-                {(user.role === Role.Investor || isFounder) && idea.investmentDetails && (
-                    <div className="hidden sm:block mb-2 p-2 bg-purple-900/30 border border-purple-800 rounded-lg text-xs">
-                        <h4 className="font-bold text-purple-300 mb-1">Investment</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <p className="text-neutral-400">Asking:</p>
-                                <p className="font-semibold text-white text-xs">${idea.investmentDetails.targetInvestment.toLocaleString()}</p>
-                            </div>
-                            <div>
-                                <p className="text-neutral-400">Equity:</p>
-                                <p className="font-semibold text-white text-xs">{idea.investmentDetails.equityOffered}%</p>
+
+                {/* Description and details */}
+                <div className="flex flex-col gap-1 sm:gap-2 flex-grow">
+                    <p className="text-slate-300 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 sm:line-clamp-4">{idea.description}</p>
+                    {(user.role === Role.Investor || isFounder) && idea.investmentDetails && (
+                        <div className="hidden sm:block mb-2 p-3 bg-purple-900/20 border border-purple-800/30 rounded-xl text-xs">
+                            <h4 className="font-bold text-purple-300 mb-2">Investment Details</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-slate-400 text-xs">Target Investment:</p>
+                                    <p className="font-semibold text-white text-sm">${idea.investmentDetails.targetInvestment.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-slate-400 text-xs">Equity Offered:</p>
+                                    <p className="font-semibold text-white text-sm">{idea.investmentDetails.equityOffered}%</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                {!(user.role === Role.Investor || user.role === 'investor') && (
-                    <div className="hidden sm:block">
-                        <h4 className="font-semibold text-white mb-1 flex items-center gap-1 text-xs"><CodeIcon className="w-4 h-4 text-purple-400"/> Skills:</h4>
-                        <div className="flex flex-wrap gap-1">
-                            {idea.requiredSkills.map(skill => (
-                                <span key={skill} className="bg-blue-900/50 text-blue-300 text-[10px] font-medium px-2 py-0.5 rounded-full">{skill}</span>
-                            ))}
+                    )}
+                    {!(user.role === Role.Investor || user.role === 'investor') && (
+                        <div className="hidden sm:block">
+                            <h4 className="font-semibold text-white mb-2 flex items-center gap-1 text-xs">
+                                <CodeIcon className="w-4 h-4 text-emerald-400"/> Required Skills:
+                            </h4>
+                            <div className="flex flex-wrap gap-1">
+                                {idea.requiredSkills.map(skill => (
+                                    <span key={skill} className={cn(
+                                        "bg-blue-900/30 text-blue-300 text-[10px] font-medium px-2 py-1 rounded-full border border-blue-700/30"
+                                    )}>{skill}</span>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
-                {/* Show investor count only for non-founders on desktop, for founders it's in the bottom row */}
-                {!isFounder && investorCounts && investorCounts[idea.id] > 0 && (
-                    <div className="flex items-center gap-1 mt-1">
-                        <UsersIcon className="w-4 h-4 text-green-400" />
-                        <span className="text-green-300 text-xs font-semibold">{investorCounts[idea.id]} investor{investorCounts[idea.id] > 1 ? 's' : ''} invested</span>
-                    </div>
-                )}
-            </div>
-            {/* Mobile actions row: custom for founder (beside Manage Team), default for others */}
-            {isFounder ? null : (
-                <div className="sm:hidden">
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-neutral-900/80 rounded-xl px-2 py-1 shadow-lg z-10">
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={e => { e.stopPropagation(); onLike(idea.id); }}
-                                title={userHasLiked ? 'Unlike' : 'Like'}
-                                className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-neutral-400 hover:text-red-500'}`}
-                            >
-                                <HeartIcon className="w-5 h-5" fill={userHasLiked ? 'currentColor' : 'none'} />
-                            </button>
-                            <span className="text-xs text-neutral-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
+                    )}
+                    {/* Show investor count only for non-founders on desktop, for founders it's in the bottom row */}
+                    {!isFounder && investorCounts && investorCounts[idea.id] > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                            <UsersIcon className="w-4 h-4 text-emerald-400" />
+                            <span className="text-emerald-300 text-xs font-semibold">{investorCounts[idea.id]} investor{investorCounts[idea.id] > 1 ? 's' : ''} invested</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
-                                title="Toggle comments"
-                                className="text-neutral-400 hover:text-blue-500 transition-colors"
-                            >
-                                <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                            </button>
-                            <span className="text-xs text-neutral-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
-            )}
-            {/* Bottom row: join/request/status, manage team, negotiation, etc. */}
-            <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-neutral-800">
-                <div className="flex flex-wrap justify-between items-center gap-2 sm:gap-4">
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-400">
-                        {isFounder ? (
-                            <span className="text-xs sm:text-sm font-semibold text-purple-400">Your Idea</span>
-                        ) : hasJoined || isRequestApproved ? (
-                            <span className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-green-400">
-                                <CheckIcon className="w-5 h-5" />
-                                Joined
-                            </span>
-                        ) : hasPendingRequest ? (
-                            <span className="text-xs sm:text-sm font-semibold text-yellow-400">Request Sent</span>
-                        ) : canJoin ? (
-                            <span className="flex items-center gap-2">
+
+                {/* Mobile actions row: custom for founder (beside Manage Team), default for others */}
+                {isFounder ? null : (
+                    <div className="sm:hidden">
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-slate-900/80 rounded-xl px-2 py-1 shadow-lg z-10">
+                            <div className="flex items-center gap-1">
                                 <button
-                                    onClick={e => { e.stopPropagation(); onJoinRequest(idea); }}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 sm:py-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm"
+                                    onClick={e => { e.stopPropagation(); onLike(idea.id); }}
+                                    title={userHasLiked ? 'Unlike' : 'Like'}
+                                    className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
                                 >
-                                    Send Join Request
+                                    <HeartIcon className="w-5 h-5" fill={userHasLiked ? 'currentColor' : 'none'} />
                                 </button>
-                                {/* Action icons beside join button on large screens */}
-                                <span className="hidden sm:inline-flex items-center gap-2 ml-2">
-                                    <button
-                                        onClick={e => { e.stopPropagation(); onLike(idea.id); }}
-                                        title={userHasLiked ? 'Unlike' : 'Like'}
-                                        className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-neutral-400 hover:text-red-500'}`}
-                                    >
-                                        <HeartIcon className="w-5 h-5 sm:w-6 sm:h-6" fill={userHasLiked ? 'currentColor' : 'none'} />
-                                    </button>
-                                    <span className="text-xs sm:text-sm text-neutral-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
-                                    <button
-                                        onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
-                                        title="Toggle comments"
-                                        className="text-neutral-400 hover:text-blue-500 transition-colors"
-                                    >
-                                        <ChatBubbleLeftRightIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                                    </button>
-                                    <span className="text-xs sm:text-sm text-neutral-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
+                                <span className="text-xs text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                    title="Toggle comments"
+                                    className="text-slate-400 hover:text-blue-500 transition-colors"
+                                >
+                                    <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                                </button>
+                                <span className="text-xs text-slate-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Bottom row: join/request/status, manage team, negotiation, etc. */}
+                <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-slate-700/30">
+                    <div className="flex flex-wrap justify-between items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
+                            {isFounder ? (
+                                <span className="text-xs sm:text-sm font-semibold text-purple-400">Your Idea</span>
+                            ) : hasJoined || isRequestApproved ? (
+                                <span className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-emerald-400">
+                                    <CheckIcon className="w-5 h-5" />
+                                    Joined
                                 </span>
-                            </span>
-                        ) : null}
-                        {user.role === Role.Investor && !isFounder && negotiationStatuses && (
-                            <span className="flex items-center gap-2">
-                                {negotiationStatuses[idea.id] && (
-                                    <span className={`text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full ${
-                                        negotiationStatuses[idea.id] === 'accepted' ? 'bg-green-900/50 text-green-300' :
-                                        negotiationStatuses[idea.id] === 'declined' ? 'bg-red-900/50 text-red-300' :
-                                        negotiationStatuses[idea.id] === 'active' ? 'bg-yellow-900/50 text-yellow-300' :
-                                        'bg-neutral-800 text-neutral-400'
-                                    }`}>
-                                        {negotiationStatuses[idea.id].charAt(0).toUpperCase() + negotiationStatuses[idea.id].slice(1)}
+                            ) : hasPendingRequest ? (
+                                <span className="text-xs sm:text-sm font-semibold text-amber-400">Request Sent</span>
+                            ) : canJoin ? (
+                                <span className="flex items-center gap-2">
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onJoinRequest(idea); }}
+                                        className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-1 px-2 sm:py-2 sm:px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/25 text-xs sm:text-sm"
+                                    >
+                                        Send Join Request
+                                    </button>
+                                    {/* Action icons beside join button on large screens */}
+                                    <span className="hidden sm:inline-flex items-center gap-2 ml-2">
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onLike(idea.id); }}
+                                            title={userHasLiked ? 'Unlike' : 'Like'}
+                                            className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
+                                        >
+                                            <HeartIcon className="w-5 h-5 sm:w-6 sm:h-6" fill={userHasLiked ? 'currentColor' : 'none'} />
+                                        </button>
+                                        <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            title="Toggle comments"
+                                            className="text-slate-400 hover:text-blue-500 transition-colors"
+                                        >
+                                            <ChatBubbleLeftRightIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                        </button>
+                                        <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
                                     </span>
-                                )}
-                                <button
-                                    onClick={e => { e.stopPropagation(); handleOpenNegotiation(); }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:py-1 sm:px-3 rounded-lg transition-colors text-xs sm:text-xs whitespace-nowrap leading-none"
-                                    disabled={negotiationLoading}
-                                >
-                                    {negotiationLoading ? 'Loading...' : 'Open Negotiation'}
-                                </button>
-                                {/* Action icons beside negotiate button on large screens */}
-                                <span className="hidden sm:inline-flex items-center gap-2 ml-2">
-                                    <button
-                                        onClick={e => { e.stopPropagation(); onLike(idea.id); }}
-                                        title={userHasLiked ? 'Unlike' : 'Like'}
-                                        className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-neutral-400 hover:text-red-500'}`}
-                                    >
-                                        <HeartIcon className="w-5 h-5 sm:w-6 sm:h-6" fill={userHasLiked ? 'currentColor' : 'none'} />
-                                    </button>
-                                    <span className="text-xs sm:text-sm text-neutral-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
-                                    <button
-                                        onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
-                                        title="Toggle comments"
-                                        className="text-neutral-400 hover:text-blue-500 transition-colors"
-                                    >
-                                        <ChatBubbleLeftRightIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                                    </button>
-                                    <span className="text-xs sm:text-sm text-neutral-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
                                 </span>
-                            </span>
-                        )}
-                    </div>
-                    {/* Founder: Investor count above, then Manage Team and action icons on mobile */}
-                    {isFounder ? (
-                        <div className="w-full sm:w-auto mt-1 sm:mt-0 flex flex-col gap-1">
-                            {investorCounts && investorCounts[idea.id] > 0 && (
-                                <div className="flex items-center gap-1 mb-1">
-                                    <UsersIcon className="w-4 h-4 text-green-400" />
-                                    <span className="text-green-300 text-xs font-semibold">{investorCounts[idea.id]} investor{investorCounts[idea.id] > 1 ? 's' : ''} invested</span>
-                                </div>
+                            ) : null}
+                            {user.role === Role.Investor && !isFounder && negotiationStatuses && (
+                                <span className="flex items-center gap-2">
+                                    {negotiationStatuses[idea.id] && (
+                                        <span className={cn(
+                                            "text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full",
+                                            negotiationStatuses[idea.id] === 'accepted' ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/30' :
+                                            negotiationStatuses[idea.id] === 'declined' ? 'bg-red-900/30 text-red-300 border border-red-700/30' :
+                                            negotiationStatuses[idea.id] === 'active' ? 'bg-amber-900/30 text-amber-300 border border-amber-700/30' :
+                                            'bg-slate-800 text-slate-400'
+                                        )}>
+                                            {negotiationStatuses[idea.id].charAt(0).toUpperCase() + negotiationStatuses[idea.id].slice(1)}
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); handleOpenNegotiation(); }}
+                                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-1 px-2 sm:py-1 sm:px-3 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 text-xs sm:text-xs whitespace-nowrap leading-none"
+                                        disabled={negotiationLoading}
+                                    >
+                                        {negotiationLoading ? 'Loading...' : 'Open Negotiation'}
+                                    </button>
+                                    {/* Action icons beside negotiate button on large screens */}
+                                    <span className="hidden sm:inline-flex items-center gap-2 ml-2">
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onLike(idea.id); }}
+                                            title={userHasLiked ? 'Unlike' : 'Like'}
+                                            className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
+                                        >
+                                            <HeartIcon className="w-5 h-5 sm:w-6 sm:h-6" fill={userHasLiked ? 'currentColor' : 'none'} />
+                                        </button>
+                                        <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            title="Toggle comments"
+                                            className="text-slate-400 hover:text-blue-500 transition-colors"
+                                        >
+                                            <ChatBubbleLeftRightIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                        </button>
+                                        <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
+                                    </span>
+                                </span>
                             )}
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                    onClick={e => { e.stopPropagation(); onManageTeam(idea); }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 sm:py-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm whitespace-nowrap min-w-[90px] max-w-[120px]"
-                                >
-                                    Manage Team
-                                </button>
-                                <div className="flex items-center gap-1 bg-neutral-900/80 rounded-xl px-2 py-1 shadow-lg z-10">
-                                    <button
-                                        onClick={e => { e.stopPropagation(); onLike(idea.id); }}
-                                        title={userHasLiked ? 'Unlike' : 'Like'}
-                                        className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-neutral-400 hover:text-red-500'}`}
-                                    >
-                                        <HeartIcon className="w-5 h-5" fill={userHasLiked ? 'currentColor' : 'none'} />
-                                    </button>
-                                    <span className="text-xs text-neutral-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
-                                    <button
-                                        onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
-                                        title="Toggle comments"
-                                        className="text-neutral-400 hover:text-blue-500 transition-colors"
-                                    >
-                                        <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                                    </button>
-                                    <span className="text-xs text-neutral-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
-                                    <button
-                                        onClick={e => { e.stopPropagation(); onEdit(idea); }}
-                                        title="Edit idea"
-                                        className="text-neutral-400 hover:text-purple-400"
-                                    >
-                                        <PencilIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
                         </div>
-                    ) : null}
-                </div>
-            </div>
-            {/* Comments and negotiation deck (unchanged) */}
-            {showComments && (
-                <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-neutral-800">
-                    <h5 className="font-bold text-white mb-2 text-xs sm:text-base">Comments</h5>
-                    <div className="space-y-2 sm:space-y-3 max-h-32 sm:max-h-48 overflow-y-auto pr-2">
-                        {idea.comments && idea.comments.length > 0 ? (
-                            idea.comments.map((comment) => (
-                                <div key={comment.id} className="flex items-start gap-2 group">
-                                    <img src={comment.userAvatar} alt={comment.userName} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
-                                    <div className="bg-neutral-800 rounded-lg p-2 text-xs sm:text-sm w-full">
-                                        <div className="flex justify-between items-start">
-                                            <p className="font-semibold text-white truncate">{comment.userName}</p>
-                                            {isFounder && (
-                                                <button onClick={() => onDeleteComment(idea.id, comment)} title="Delete comment" className="text-neutral-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                        <p className="text-neutral-300 break-words">{comment.text}</p>
+                        {/* Founder: Investor count above, then Manage Team and action icons on mobile */}
+                        {isFounder ? (
+                            <div className="w-full sm:w-auto mt-1 sm:mt-0 flex flex-col gap-1">
+                                {investorCounts && investorCounts[idea.id] > 0 && (
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <UsersIcon className="w-4 h-4 text-emerald-400" />
+                                        <span className="text-emerald-300 text-xs font-semibold">{investorCounts[idea.id]} investor{investorCounts[idea.id] > 1 ? 's' : ''} invested</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onManageTeam(idea); }}
+                                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-1 px-3 sm:py-2 sm:px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 text-xs sm:text-sm whitespace-nowrap min-w-[90px] max-w-[120px]"
+                                    >
+                                        Manage Team
+                                    </button>
+                                    <div className="flex items-center gap-1 bg-slate-800/50 rounded-xl px-2 py-1 shadow-lg z-10">
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onLike(idea.id); }}
+                                            title={userHasLiked ? 'Unlike' : 'Like'}
+                                            className={`transition-colors ${userHasLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
+                                        >
+                                            <HeartIcon className="w-5 h-5" fill={userHasLiked ? 'currentColor' : 'none'} />
+                                        </button>
+                                        <span className="text-xs text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            title="Toggle comments"
+                                            className="text-slate-400 hover:text-blue-500 transition-colors"
+                                        >
+                                            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                                        </button>
+                                        <span className="text-xs text-slate-400 min-w-[16px] text-center">{idea.comments?.length || 0}</span>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onEdit(idea); }}
+                                            title="Edit idea"
+                                            className="text-slate-400 hover:text-purple-400"
+                                        >
+                                            <PencilIcon className="w-5 h-5" />
+                                        </button>
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-neutral-400 text-xs sm:text-sm">No comments yet.</p>
-                        )}
+                            </div>
+                        ) : null}
                     </div>
-                    <form onSubmit={handleCommentSubmit} className="mt-2 sm:mt-3 flex gap-2">
-                        <input
-                            type="text"
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="flex-grow bg-neutral-800 border border-neutral-700 rounded-lg py-1 px-2 sm:py-1.5 sm:px-3 text-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-500"
-                        />
-                        <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-2 sm:py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm transition-colors">
-                            Post
-                        </button>
-                    </form>
                 </div>
-            )}
-            {showNegotiation && negotiation && (
-                <NegotiationDeck
-                    negotiation={negotiation}
-                    currentUser={user}
-                    onClose={() => setShowNegotiation(false)}
-                    onOfferMade={async (offer) => {
-                        await firestoreService.addOfferToNegotiation(negotiation.id, offer);
-                        // Refetch negotiation
-                        const negotiations = await new Promise(resolve => {
-                            firestoreService.getNegotiationsForInvestor(user.id, resolve);
-                        });
-                        const updated = (negotiations as Negotiation[]).find((n) => n.ideaId === idea.id);
-                        setNegotiation(updated);
-                    }}
-                    onStatusChange={async (status) => {
-                        await firestoreService.updateNegotiationStatus(negotiation.id, status);
-                        // Refetch negotiation
-                        const negotiations = await new Promise(resolve => {
-                            firestoreService.getNegotiationsForInvestor(user.id, resolve);
-                        });
-                        const updated = (negotiations as Negotiation[]).find((n) => n.ideaId === idea.id);
-                        setNegotiation(updated);
-                    }}
-                />
-            )}
+
+                {/* Comments and negotiation deck (unchanged) */}
+                {showComments && (
+                    <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-slate-700/30">
+                        <h5 className="font-bold text-white mb-2 text-xs sm:text-base">Comments</h5>
+                        <div className="space-y-2 sm:space-y-3 max-h-32 sm:max-h-48 overflow-y-auto pr-2">
+                            {idea.comments && idea.comments.length > 0 ? (
+                                idea.comments.map((comment) => (
+                                    <div key={comment.id} className="flex items-start gap-2 group">
+                                        <img src={comment.userAvatar} alt={comment.userName} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
+                                        <div className="bg-slate-800/50 rounded-lg p-2 text-xs sm:text-sm w-full border border-slate-700/30">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-semibold text-white truncate">{comment.userName}</p>
+                                                {isFounder && (
+                                                    <button onClick={() => onDeleteComment(idea.id, comment)} title="Delete comment" className="text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <p className="text-slate-300 break-words">{comment.text}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-slate-400 text-xs sm:text-sm">No comments yet.</p>
+                            )}
+                        </div>
+                        <form onSubmit={handleCommentSubmit} className="mt-2 sm:mt-3 flex gap-2">
+                            <input
+                                type="text"
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                placeholder="Add a comment..."
+                                className="flex-grow bg-slate-800/50 border border-slate-700/30 rounded-lg py-1 px-2 sm:py-1.5 sm:px-3 text-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
+                            />
+                            <button type="submit" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-1 px-2 sm:py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25">
+                                Post
+                            </button>
+                        </form>
+                    </div>
+                )}
+                {showNegotiation && negotiation && (
+                    <NegotiationDeck
+                        negotiation={negotiation}
+                        currentUser={user}
+                        onClose={() => setShowNegotiation(false)}
+                        onOfferMade={async (offer) => {
+                            await firestoreService.addOfferToNegotiation(negotiation.id, offer);
+                            // Refetch negotiation
+                            const negotiations = await new Promise(resolve => {
+                                firestoreService.getNegotiationsForInvestor(user.id, resolve);
+                            });
+                            const updated = (negotiations as Negotiation[]).find((n) => n.ideaId === idea.id);
+                            setNegotiation(updated);
+                        }}
+                        onStatusChange={async (status) => {
+                            await firestoreService.updateNegotiationStatus(negotiation.id, status);
+                            // Refetch negotiation
+                            const negotiations = await new Promise(resolve => {
+                                firestoreService.getNegotiationsForInvestor(user.id, resolve);
+                            });
+                            const updated = (negotiations as Negotiation[]).find((n) => n.ideaId === idea.id);
+                            setNegotiation(updated);
+                        }}
+                    />
+                )}
+            </div>
         </div>
     );
 };
@@ -563,9 +628,10 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 
 interface IdeasBoardProps {
     user: User;
+    onNavigateToNegotiation?: (negotiationId: string) => void;
 }
 
-const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
+const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }) => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const ideasCache = React.useRef<{ ideas: Idea[], lastDoc: any, hasMore: boolean } | null>(null);
     const [lastIdeaDoc, setLastIdeaDoc] = useState<any>(null);
@@ -750,7 +816,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold text-white">Idea Marketplace</h1>
                 {user.role === Role.Founder && !showForm && (
-                    <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors">
+                    <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-2 px-5 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25">
                         <PlusIcon className="w-5 h-5" />
                         Post New Idea
                     </button>
@@ -759,10 +825,10 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
 
             {/* Show IdeaPostForm in a modal overlay when editing */}
             {showForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-                    <div className="bg-neutral-900 rounded-2xl shadow-2xl p-0 w-full max-w-lg mx-2 relative">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-gradient-to-br from-slate-900 to-black rounded-2xl shadow-2xl p-0 w-full max-w-lg mx-2 relative border border-slate-800/50">
                         <button
-                            className="absolute top-3 right-3 text-neutral-400 hover:text-white text-2xl font-bold z-10"
+                            className="absolute top-3 right-3 text-slate-400 hover:text-white text-2xl font-bold z-10 transition-colors"
                             onClick={handleCancelEdit}
                             aria-label="Close edit form"
                         >
@@ -774,16 +840,16 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
             )}
 
             {user.role === Role.Founder && (
-                <div className="border-b border-neutral-800 flex space-x-4">
+                <div className="border-b border-slate-700/30 flex space-x-4">
                     <button
                         onClick={() => setActiveTab('ideas')}
-                        className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'ideas' ? 'text-white border-b-2 border-purple-500' : 'text-neutral-400 hover:text-white'}`}
+                        className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'ideas' ? 'text-white border-b-2 border-purple-500' : 'text-slate-400 hover:text-white'}`}
                     >
                         Browse Ideas
                     </button>
                     <button
                         onClick={() => setActiveTab('requests')}
-                        className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'requests' ? 'text-white border-b-2 border-green-500' : 'text-neutral-400 hover:text-white'}`}
+                        className={`py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'requests' ? 'text-white border-b-2 border-emerald-500' : 'text-slate-400 hover:text-white'}`}
                     >
                         Join Requests
                     </button>
@@ -801,10 +867,10 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
                     {!isLoading && !error && (
                         <>
                             {ideas.length === 0 && (
-                                <div className="text-center py-16 px-6 bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-2xl">
-                                    <LightbulbIcon className="w-12 h-12 mx-auto text-neutral-600" />
+                                <div className="text-center py-16 px-6 bg-gradient-to-br from-slate-900/50 to-black/50 border-2 border-dashed border-slate-700/30 rounded-2xl backdrop-blur-sm">
+                                    <LightbulbIcon className="w-12 h-12 mx-auto text-slate-600" />
                                     <h3 className="text-xl font-semibold mt-4 text-white">No Ideas Yet</h3>
-                                    <p className="text-neutral-400 mt-2 max-w-md mx-auto">
+                                    <p className="text-slate-400 mt-2 max-w-md mx-auto">
                                         {user.role === Role.Founder
                                             ? 'Be the first to share your vision! Post a startup idea to attract talented developers.'
                                             : 'No ideas have been posted yet. Check back soon to find exciting projects to join.'}
@@ -843,6 +909,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
                             onStartNegotiation={setNegotiatingIdea}
                             negotiationStatuses={negotiationStatuses}
                             investorCounts={investorCounts}
+                            onNavigateToNegotiation={onNavigateToNegotiation}
                         />
                     </div>
                 ))}
@@ -858,7 +925,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user }) => {
             </div>
             {hasMoreIdeas && (
                 <div className="flex justify-center mt-6">
-                    <button onClick={loadMoreIdeas} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors" disabled={isLoading}>
+                    <button onClick={loadMoreIdeas} className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25" disabled={isLoading}>
                         {isLoading ? 'Loading...' : 'Load More Ideas'}
                     </button>
                 </div>

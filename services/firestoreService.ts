@@ -70,6 +70,39 @@ export const firestoreService = {
         return chats;
     },
 
+    getChatsRealtime: (uid: string, callback: (chats: Chat[]) => void) => {
+        const chatsRef = db.collection("chats").where("participants", "array-contains", uid);
+        return chatsRef.onSnapshot(async (snapshot) => {
+            const chats: Chat[] = [];
+            for (const doc of snapshot.docs) {
+                const chatData = doc.data();
+                const otherParticipantId = chatData.participants.find((p: string) => p !== uid);
+                if (otherParticipantId) {
+                    const otherParticipant = await firestoreService.getUserProfile(otherParticipantId);
+                    if (otherParticipant) {
+                        chats.push({
+                            id: doc.id,
+                            ...chatData,
+                            participantDetails: [otherParticipant]
+                        } as Chat);
+                    }
+                }
+            }
+            callback(chats);
+        });
+    },
+
+    markChatAsRead: async (chatId: string, userId: string) => {
+        try {
+            const chatRef = db.collection('chats').doc(chatId);
+            await chatRef.update({
+                [`unreadCounts.${userId}`]: 0
+            });
+        } catch (error) {
+            console.error('Failed to mark chat as read:', error);
+        }
+    },
+
     getChatId: (uid1: string, uid2: string): string => {
         return [uid1, uid2].sort().join('_');
     },
@@ -178,6 +211,8 @@ export const firestoreService = {
             if (data && data.status === 'pending') {
                 throw new Error("Connection request already exists.");
             }
+            // If a previous request exists but was rejected or withdrawn, we can create a new one
+            // The existing document will be overwritten
         }
 
         const request = {
@@ -443,5 +478,108 @@ export const firestoreService = {
             totalComments += (idea.comments ? idea.comments.length : 0);
         });
         return { totalLikes, totalComments };
+    },
+
+    getConnectionStatus: async (currentUserId: string, otherUserId: string): Promise<{ isConnected: boolean; isPending: boolean }> => {
+        // Check if users are already connected
+        const currentUserRef = db.collection('users').doc(currentUserId);
+        const currentUserDoc = await currentUserRef.get();
+        const currentUserData = currentUserDoc.data();
+        
+        if (currentUserData && currentUserData.connections && currentUserData.connections.includes(otherUserId)) {
+            return { isConnected: true, isPending: false };
+        }
+
+        // Check if there's a pending connection request
+        const requestId = [currentUserId, otherUserId].sort().join('_');
+        const requestRef = db.collection('connectionRequests').doc(requestId);
+        const requestDoc = await requestRef.get();
+        
+        if (requestDoc.exists) {
+            const requestData = requestDoc.data();
+            if (requestData && requestData.status === 'pending') {
+                // Check if the current user is the sender or receiver
+                if (requestData.fromUserId === currentUserId) {
+                    return { isConnected: false, isPending: true };
+                }
+            }
+        }
+
+        return { isConnected: false, isPending: false };
+    },
+
+    getConnectionStatusRealtime: (currentUserId: string, otherUserId: string, callback: (status: { isConnected: boolean; isPending: boolean }) => void): (() => void) => {
+        const unsubscribers: (() => void)[] = [];
+
+        // Listen to current user's connections changes
+        const currentUserRef = db.collection('users').doc(currentUserId);
+        const unsubCurrentUser = currentUserRef.onSnapshot(snapshot => {
+            console.log(`FirestoreService: Current user ${currentUserId} connections changed:`, snapshot.data()?.connections);
+            const userData = snapshot.data();
+            if (userData && userData.connections && userData.connections.includes(otherUserId)) {
+                console.log(`FirestoreService: Users are now connected`);
+                callback({ isConnected: true, isPending: false });
+                return;
+            }
+            
+            // If not connected, check pending requests
+            const requestId = [currentUserId, otherUserId].sort().join('_');
+            const requestRef = db.collection('connectionRequests').doc(requestId);
+            requestRef.get().then(doc => {
+                if (doc.exists) {
+                    const requestData = doc.data();
+                    if (requestData && requestData.status === 'pending' && requestData.fromUserId === currentUserId) {
+                        console.log(`FirestoreService: Request is pending`);
+                        callback({ isConnected: false, isPending: true });
+                    } else {
+                        console.log(`FirestoreService: Request is not pending`);
+                        callback({ isConnected: false, isPending: false });
+                    }
+                } else {
+                    console.log(`FirestoreService: No request exists`);
+                    callback({ isConnected: false, isPending: false });
+                }
+            });
+        });
+
+        // Listen to connection requests changes
+        const requestId = [currentUserId, otherUserId].sort().join('_');
+        const requestRef = db.collection('connectionRequests').doc(requestId);
+        const unsubRequest = requestRef.onSnapshot(snapshot => {
+            console.log(`FirestoreService: Connection request ${requestId} changed:`, snapshot.data());
+            if (snapshot.exists) {
+                const requestData = snapshot.data();
+                if (requestData && requestData.status === 'pending' && requestData.fromUserId === currentUserId) {
+                    console.log(`FirestoreService: Request is pending from current user`);
+                    callback({ isConnected: false, isPending: true });
+                } else if (requestData && requestData.status === 'approved') {
+                    console.log(`FirestoreService: Request was approved`);
+                    callback({ isConnected: true, isPending: false });
+                } else {
+                    console.log(`FirestoreService: Request has other status:`, requestData?.status);
+                    callback({ isConnected: false, isPending: false });
+                }
+            } else {
+                console.log(`FirestoreService: Request document deleted`);
+                callback({ isConnected: false, isPending: false });
+            }
+        });
+
+        // Also listen to other user's connections changes (in case they accept/reject)
+        const otherUserRef = db.collection('users').doc(otherUserId);
+        const unsubOtherUser = otherUserRef.onSnapshot(snapshot => {
+            console.log(`FirestoreService: Other user ${otherUserId} connections changed:`, snapshot.data()?.connections);
+            const userData = snapshot.data();
+            if (userData && userData.connections && userData.connections.includes(currentUserId)) {
+                console.log(`FirestoreService: Other user now has current user in connections`);
+                callback({ isConnected: true, isPending: false });
+            }
+        });
+
+        unsubscribers.push(unsubCurrentUser, unsubRequest, unsubOtherUser);
+
+        return () => {
+            unsubscribers.forEach(unsub => unsub());
+        };
     },
 };

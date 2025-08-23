@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, User } from '../types';
 import { LogoIcon, LogInIcon, LogOutIcon, MessageSquareIcon, LightbulbIcon, UserPlusIcon, UsersIcon, UserIcon, TrendingUpIcon, HamburgerIcon, XIcon } from './icons';
 
@@ -9,6 +9,8 @@ interface HeaderProps {
     onLogin: () => void;
     onLogout: () => void;
     pendingRequestCount: number;
+    isMobileChatOpen?: boolean;
+    isMobileNegotiationOpen?: boolean;
 }
 
 const NavLink: React.FC<{
@@ -38,7 +40,7 @@ const NavLink: React.FC<{
     );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, pendingRequestCount }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, pendingRequestCount, isMobileChatOpen = false, isMobileNegotiationOpen = false }) => {
     const [isMenuOpen, setMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -53,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
     };
 
     // Handle sidebar mount/unmount for animation
-    React.useEffect(() => {
+    useEffect(() => {
         if (sidebarOpen) {
             setSidebarVisible(true);
         } else {
@@ -85,9 +87,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
 
     // Hook to hide nav bar on scroll down and show on scroll up (mobile only)
     function useHideOnScroll() {
-        const [show, setShow] = React.useState(true);
-        const lastScroll = React.useRef(0);
-        React.useEffect(() => {
+        const [show, setShow] = useState(true);
+        const lastScroll = useRef(0);
+        useEffect(() => {
             const handleScroll = () => {
                 const curr = window.scrollY;
                 if (curr < 10) {
@@ -110,43 +112,47 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
 
     return (
         <>
-            {/* Mobile header */}
-            <header className="lg:hidden fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-sm z-50 border-b border-white/10 shadow-lg flex items-center h-16 px-4 justify-between">
-                <div className="flex items-center">
-                    {/* Show sidebar icon on tablet screens only (sm:block, hidden on xs and lg+) */}
-                    <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none mr-2 sm:block hidden lg:hidden" title="Open menu">
-                        <HamburgerIcon className="w-7 h-7 text-white" />
-                    </button>
-                    <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setView(View.LANDING)}>
-                        <LogoIcon className="h-8 w-8 text-purple-500" />
-                        <span className="font-bold text-xl text-white">Grow With Me</span>
+            {/* Mobile header - Hidden when chat or negotiation is open on mobile */}
+            {!isMobileChatOpen && !isMobileNegotiationOpen && (
+                <header className="lg:hidden fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-sm z-50 border-b border-white/10 shadow-lg flex items-center h-16 px-4 justify-between">
+                    <div className="flex items-center">
+                        {/* Show sidebar icon on tablet screens only (sm:block, hidden on xs and lg+) */}
+                        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none mr-2 sm:block hidden lg:hidden" title="Open menu">
+                            <HamburgerIcon className="w-7 h-7 text-white" />
+                        </button>
+                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setView(View.LANDING)}>
+                            <LogoIcon className="h-8 w-8 text-purple-500" />
+                            <span className="font-bold text-xl text-white">Grow With Me</span>
+                        </div>
                     </div>
-                </div>
-                <div className="flex items-center">
-                    <div className="relative">
-                        <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer" onClick={() => setMenuOpen(!isMenuOpen)} />
-                        {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-44 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
-                                <a href="#" onClick={(e) => { e.preventDefault(); setView(View.ONBOARDING); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.PEOPLE); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.PEOPLE ? 'text-purple-400' : 'text-neutral-300'}`}><UsersIcon className="w-4 h-4"/> People</a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.REQUESTS); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.REQUESTS ? 'text-purple-400' : 'text-neutral-300'}`}>{pendingRequestCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 mr-1">{pendingRequestCount}</span>}<UserPlusIcon className="w-4 h-4"/> Requests</a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
-                                    <LogOutIcon className="w-4 h-4"/> Logout
-                                </a>
-                            </div>
-                        )}
+                    <div className="flex items-center">
+                        <div className="relative">
+                            <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer" onClick={() => setMenuOpen(!isMenuOpen)} />
+                            {isMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-44 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
+                                    <a href="#" onClick={(e) => { e.preventDefault(); setView(View.ONBOARDING); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.PEOPLE); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.PEOPLE ? 'text-purple-400' : 'text-neutral-300'}`}><UsersIcon className="w-4 h-4"/> People</a>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.REQUESTS); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.REQUESTS ? 'text-purple-400' : 'text-neutral-300'}`}>{pendingRequestCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 mr-1">{pendingRequestCount}</span>}<UserPlusIcon className="w-4 h-4"/> Requests</a>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
+                                        <LogOutIcon className="w-4 h-4"/> Logout
+                                    </a>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </header>
+                </header>
+            )}
 
-            {/* Bottom nav bar for mobile only (max-width: 640px), hides on scroll down */}
-            <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-sm border-t border-white/10 shadow-lg flex justify-between items-center h-16 px-1 sm:hidden lg:hidden gap-1 transition-transform duration-300 ${showNav ? 'translate-y-0' : 'translate-y-full'}`}>
-                <button onClick={() => handleNavigation(View.DASHBOARD)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.DASHBOARD ? 'text-purple-400' : 'text-neutral-300'}`}> <UserIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Dashboard</span> </button>
-                <button onClick={() => handleNavigation(View.ANALYTICS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.ANALYTICS ? 'text-purple-400' : 'text-neutral-300'}`}> <TrendingUpIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Analytics</span> </button>
-                <button onClick={() => handleNavigation(View.MESSAGES)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.MESSAGES ? 'text-purple-400' : 'text-neutral-300'}`}> <MessageSquareIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Messages</span> </button>
-                <button onClick={() => handleNavigation(View.IDEAS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.IDEAS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Ideas</span> </button>
-                <button onClick={() => handleNavigation(View.NEGOTIATIONS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.NEGOTIATIONS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Negotiations</span> </button>
-            </nav>
+            {/* Bottom nav bar for mobile only (max-width: 640px), hides on scroll down - Hidden when chat or negotiation is open */}
+            {!isMobileChatOpen && !isMobileNegotiationOpen && (
+                <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-sm border-t border-white/10 shadow-lg flex justify-between items-center h-16 px-1 sm:hidden lg:hidden gap-1 transition-transform duration-300 ${showNav ? 'translate-y-0' : 'translate-y-full'}`}>
+                    <button onClick={() => handleNavigation(View.DASHBOARD)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.DASHBOARD ? 'text-purple-400' : 'text-neutral-300'}`}> <UserIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Dashboard</span> </button>
+                    <button onClick={() => handleNavigation(View.ANALYTICS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.ANALYTICS ? 'text-purple-400' : 'text-neutral-300'}`}> <TrendingUpIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Analytics</span> </button>
+                    <button onClick={() => handleNavigation(View.MESSAGES)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.MESSAGES ? 'text-purple-400' : 'text-neutral-300'}`}> <MessageSquareIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Messages</span> </button>
+                    <button onClick={() => handleNavigation(View.IDEAS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.IDEAS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Ideas</span> </button>
+                    <button onClick={() => handleNavigation(View.NEGOTIATIONS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.NEGOTIATIONS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Negotiations</span> </button>
+                </nav>
+            )}
 
             {/* Sidebar overlay for mobile with sliding animation */}
             { (sidebarOpen || sidebarVisible) && (
@@ -206,7 +212,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                 </div>
             )}
 
-            {/* Sidebar for desktop */}
+            {/* Sidebar for desktop - Always visible */}
             <aside className="hidden lg:flex w-64 bg-white/5 backdrop-blur-sm border-r border-white/10 shadow-lg text-white p-4 flex-col h-screen fixed z-50">
                 {/* Gradient and blurred circles for sidebar aesthetics */}
                 <div className="absolute inset-0 -z-10 pointer-events-none">

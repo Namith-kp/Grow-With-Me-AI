@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { User, Offer, Negotiation } from '../types';
-import { CheckCircleIcon, XCircleIcon, CurrencyDollarIcon, BriefcaseIcon } from './icons';
+import { CheckCircleIcon, XCircleIcon, CurrencyDollarIcon, BriefcaseIcon, ArrowLeftIcon } from './icons';
 
 interface NegotiationDeckProps {
     negotiation: Negotiation;
@@ -9,6 +9,8 @@ interface NegotiationDeckProps {
     onClose: () => void;
     onOfferMade: (offer: Offer) => void;
     onStatusChange: (status: 'accepted' | 'declined') => void;
+    onBackToNegotiationList?: () => void;
+    isMobile?: boolean;
 }
 
 const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
@@ -17,6 +19,8 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
     onClose,
     onOfferMade,
     onStatusChange,
+    onBackToNegotiationList,
+    isMobile = false,
 }) => {
     if (!negotiation) {
         return (
@@ -117,7 +121,7 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
     };
 
     const OfferCard: React.FC<{ offer: Offer, isLast: boolean }> = ({ offer, isLast }) => (
-        <div className={`p-4 rounded-lg ${isLast ? 'bg-purple-900/50 border border-purple-700' : 'bg-neutral-800'}`}>
+        <div className={`p-4 rounded-xl ${isLast ? 'bg-purple-900/30 border border-purple-700/30 shadow-lg shadow-purple-500/20' : 'bg-slate-800/20 border border-slate-700/20'}`}>
             <div className="flex justify-between items-center">
                 <span className="font-bold text-lg text-white">
                     {offer.by === 'founder' ? `${negotiation.founderName}'s Offer` : `${negotiation.investorName}'s Offer`}
@@ -138,63 +142,76 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
     );
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 mt-4">
-            <div className="bg-neutral-900 text-white p-6 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] flex flex-col">
-                <div className="flex justify-between items-center border-b border-neutral-700 pb-4 mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold">Negotiation for {negotiation.ideaTitle}</h1>
-                        <p className="text-sm text-neutral-400">Between Founder & {negotiation.investorName} (Investor)</p>
+        <div className="w-full h-full bg-gradient-to-br from-slate-950 to-black flex flex-col">
+            <div className="flex-shrink-0 p-4 sm:p-6 border-b border-slate-800/30">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        {isMobile && onBackToNegotiationList && (
+                            <button 
+                                onClick={onBackToNegotiationList}
+                                className="p-2 rounded-lg hover:bg-slate-800/50 transition-colors"
+                            >
+                                <ArrowLeftIcon className="w-5 h-5 text-slate-400" />
+                            </button>
+                        )}
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold text-white">Negotiation for {negotiation.ideaTitle}</h1>
+                            <p className="text-sm text-slate-400">Between Founder & {negotiation.investorName} (Investor)</p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="text-neutral-400 hover:text-white text-3xl">&times;</button>
+                    {!isMobile && (
+                        <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl">&times;</button>
+                    )}
                 </div>
+            </div>
 
-                <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+                <div className="space-y-4">
                     {offers.length > 0 ? (
                          <div className="space-y-2">
-                            {offers.slice().reverse().map((offer, index) => (
-                                <OfferCard key={index} offer={offer} isLast={index === 0} />
+                            {offers.map((offer, index) => (
+                                <OfferCard key={index} offer={offer} isLast={index === offers.length - 1} />
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center p-8 bg-neutral-800 rounded-lg">
-                            <p className="font-semibold">Waiting for the first offer...</p>
-                            <p className="text-sm text-neutral-400 mt-1">
+                        <div className="text-center p-8 bg-slate-800/20 border border-slate-700/20 rounded-xl">
+                            <p className="font-semibold text-white">Waiting for the first offer...</p>
+                            <p className="text-sm text-slate-400 mt-1">
                                 {currentUserRole === 'founder' ? 'You can make the opening offer below.' : `Waiting for ${negotiation.founderName} to make an offer.`}
                             </p>
                         </div>
                     )}
-                </div>
 
                 {status === 'ongoing' && (
-                    <div className="mt-4 pt-4 border-t border-neutral-700">
+                    <div className="mt-6 pt-4 border-t border-slate-700/30">
                         {isMyTurn ? (
                             <div>
-                                <h3 className="text-lg font-semibold text-center mb-3">Your Turn to Counter</h3>
+                                <h3 className="text-lg font-semibold text-center mb-4 text-white">Your Turn to Counter</h3>
                                 <div className="grid grid-cols-2 gap-4 mb-4">
                                     <div>
-                                        <label htmlFor="counterInvestment" className="block text-sm font-medium text-neutral-300 mb-1">Investment ($)</label>
+                                        <label htmlFor="counterInvestment" className="block text-sm font-medium text-slate-300 mb-1">Investment ($)</label>
                                         <input
                                             id="counterInvestment"
                                             type="number"
                                             value={counterInvestment}
                                             onChange={(e) => setCounterInvestment(e.target.value)}
                                             placeholder="e.g., 550000"
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                                            className="w-full bg-slate-800/50 border border-slate-700/30 rounded-xl py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="counterEquity" className="block text-sm font-medium text-neutral-300 mb-1">Equity (%)</label>
+                                        <label htmlFor="counterEquity" className="block text-sm font-medium text-slate-300 mb-1">Equity (%)</label>
                                         <input
                                             id="counterEquity"
                                             type="number"
                                             value={counterEquity}
                                             onChange={(e) => setCounterEquity(e.target.value)}
                                             placeholder="e.g., 12"
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500"
+                                            className="w-full bg-slate-800/50 border border-slate-700/30 rounded-xl py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                                         />
                                     </div>
                                 </div>
-                                <button onClick={handleMakeOffer} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors">
+                                <button onClick={handleMakeOffer} className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-purple-500/25">
                                     Make Offer
                                 </button>
                                 {offers.length > 0 && (
@@ -205,33 +222,34 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center p-4 bg-neutral-800 rounded-lg">
-                                <p className="font-semibold">Waiting for {currentOffer?.by === 'founder' ? negotiation.investorName : 'the Founder'} to respond...</p>
-                                <p className="text-sm text-neutral-400 mt-1">You will be notified of their response.</p>
+                            <div className="text-center p-4 bg-slate-800/20 border border-slate-700/20 rounded-xl">
+                                <p className="font-semibold text-white">Waiting for {currentOffer?.by === 'founder' ? negotiation.investorName : 'the Founder'} to respond...</p>
+                                <p className="text-sm text-slate-400 mt-1">You will be notified of their response.</p>
                             </div>
                         )}
                     </div>
                 )}
 
                 {status !== 'ongoing' && (
-                    <div className={`mt-4 p-4 rounded-lg text-center ${status === 'accepted' ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
+                    <div className={`mt-6 p-6 rounded-xl text-center border ${status === 'accepted' ? 'bg-green-900/30 border-green-700/30' : 'bg-red-900/30 border-red-700/30'}`}>
                         {status === 'accepted' ? (
                             <>
-                                <CheckCircleIcon className="w-10 h-10 mx-auto text-green-400 mb-2" />
-                                <h3 className="text-xl font-bold text-green-300">Deal Accepted!</h3>
-                                <p className="text-neutral-300">
+                                <CheckCircleIcon className="w-12 h-12 mx-auto text-green-400 mb-3" />
+                                <h3 className="text-xl font-bold text-green-300 mb-2">Deal Accepted!</h3>
+                                <p className="text-slate-300">
                                     ${currentOffer?.investment.toLocaleString()} for {currentOffer?.equity}% equity.
                                 </p>
                             </>
                         ) : (
                             <>
-                                <XCircleIcon className="w-10 h-10 mx-auto text-red-400 mb-2" />
-                                <h3 className="text-xl font-bold text-red-300">Negotiation {negotiation.status}</h3>
-                                <p className="text-neutral-300">This negotiation has been terminated.</p>
+                                <XCircleIcon className="w-12 h-12 mx-auto text-red-400 mb-3" />
+                                <h3 className="text-xl font-bold text-red-300 mb-2">Negotiation {negotiation.status}</h3>
+                                <p className="text-slate-300">This negotiation has been terminated.</p>
                             </>
                         )}
                     </div>
                 )}
+                </div>
             </div>
         </div>
     );

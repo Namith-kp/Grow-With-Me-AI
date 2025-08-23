@@ -97,7 +97,7 @@ const JoinRequests: React.FC<JoinRequestsProps> = ({ user, onRequestsUpdated }) 
                     ))}
                 </ul>
             </div>
-            {viewingProfile && <ProfileCard user={viewingProfile} onClose={() => setViewingProfile(null)} />}
+            {viewingProfile && <ProfileCard user={viewingProfile} onClose={() => setViewingProfile(null)} currentUserId={user.id} />}
         </>
     );
 };

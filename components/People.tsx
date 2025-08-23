@@ -91,9 +91,10 @@ const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, on
                 <ProfileCard 
                     user={selectedUser} 
                     onClose={handleCloseProfile} 
-                    isMyProfile={selectedUser.id === currentUser.id}
+                    isOwnProfile={selectedUser.id === currentUser.id}
                     onMessage={onMessage}
                     onConnect={() => {}}
+                    currentUserId={currentUser.id}
                 />
             )}
         </>

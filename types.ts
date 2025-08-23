@@ -41,6 +41,8 @@ export interface Match {
 
 export interface EnrichedMatch extends Match {
     user: User;
+    isConnected: boolean;
+    isPending: boolean;
 }
 
 export interface Offer {

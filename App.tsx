@@ -20,8 +20,7 @@ import LandingPageLightRays from './components/Landing/LandingPageLightRays';
 import AuthComponent from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
-import FounderNegotiations from './components/FounderNegotiations';
-import InvestorNegotiations from './components/InvestorNegotiations';
+import NegotiationsBoard from './components/NegotiationsBoard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import Messages from './components/Messages';
 import IdeasBoard from './components/IdeasBoard';
@@ -98,6 +97,9 @@ const App: React.FC = () => {
     const [view, setView] = useState<View>(initialView);
     const [authUser, setAuthUser] = useState<firebase.User | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
+    const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+    const [isMobileNegotiationOpen, setIsMobileNegotiationOpen] = useState(false);
+    const [selectedNegotiationId, setSelectedNegotiationId] = useState<string | null>(null);
     const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
     const nativeUserRef = useRef(nativeUser);
     useEffect(() => { nativeUserRef.current = nativeUser; }, [nativeUser]);
@@ -448,10 +450,20 @@ const App: React.FC = () => {
             
             const foundMatches = await findMatches(userProfile, potentialPartners);
             
-            const enrichedMatches = foundMatches.map(match => {
+            const enrichedMatches = await Promise.all(foundMatches.map(async match => {
                 const user = potentialPartners.find(p => p.id === match.userId);
-                return user ? { ...match, user } : null;
-            }).filter((match): match is EnrichedMatch => match !== null);
+                if (!user) return null;
+                
+                // Get connection status for this match
+                const connectionStatus = await firestoreService.getConnectionStatus(userProfile.id, user.id);
+                
+                return { 
+                    ...match, 
+                    user,
+                    isConnected: connectionStatus.isConnected,
+                    isPending: connectionStatus.isPending
+                };
+            })).then(matches => matches.filter((match): match is EnrichedMatch => match !== null));
 
             if (!isGuestMode && authUser && !authUser.isAnonymous) {
                 try {
@@ -607,14 +619,12 @@ const App: React.FC = () => {
                 return null;
             case View.NEGOTIATIONS:
                 if (!userProfile) return null;
-                // Show founder or investor negotiations component based on role
-                if (userProfile.role === 'founder' || userProfile.role === 'Founder') {
-                    return <FounderNegotiations user={userProfile} />;
-                } else if (userProfile.role === 'investor' || userProfile.role === 'Investor') {
-                    return <InvestorNegotiations user={userProfile} />;
-                } else {
-                    return <div className="text-white p-8">Negotiations not available for this role.</div>;
-                }
+                return <NegotiationsBoard 
+                    user={userProfile} 
+                    setIsMobileNegotiationOpen={setIsMobileNegotiationOpen}
+                    selectedNegotiationId={selectedNegotiationId}
+                    onNegotiationSelected={() => setSelectedNegotiationId(null)}
+                />;
             case View.ANALYTICS:
                 if (!analyticsData && !analyticsLoading) {
                     loadAnalyticsData();
@@ -650,11 +660,18 @@ const App: React.FC = () => {
                     chats={chats} 
                     currentUser={userProfile} 
                     connections={connections}
+                    setIsMobileChatOpen={setIsMobileChatOpen}
                 />;
 
             case View.IDEAS:
                 if (!userProfile) return null;
-                return <IdeasBoard user={userProfile} />;
+                return <IdeasBoard 
+                    user={userProfile} 
+                    onNavigateToNegotiation={(negotiationId) => {
+                        setSelectedNegotiationId(negotiationId);
+                        setView(View.NEGOTIATIONS);
+                    }}
+                />;
             case View.REQUESTS:
                 return <RequestsBoard 
                             incomingRequests={pendingConnectionRequests} 
@@ -675,12 +692,21 @@ const App: React.FC = () => {
 
     return (
         <CacheProvider>
-            <div className="bg-black min-h-screen font-sans flex">
+            <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
                 {(areKeysMissing || authConfigError === 'unauthorized-domain') && <ApiKeysNotice isDomainError={authConfigError === 'unauthorized-domain'} />}
                 {(view !== View.LANDING && view !== View.AUTH) && (
-                    <Header currentView={view} setView={navigate} userProfile={userProfile} onLogin={handleLogin} onLogout={handleLogout} pendingRequestCount={pendingConnectionRequests.length} />
+                    <Header 
+                        currentView={view} 
+                        setView={navigate} 
+                        userProfile={userProfile} 
+                        onLogin={handleLogin} 
+                        onLogout={handleLogout} 
+                        pendingRequestCount={pendingConnectionRequests.length}
+                        isMobileChatOpen={isMobileChatOpen}
+                        isMobileNegotiationOpen={isMobileNegotiationOpen}
+                    />
                 )}
-                <main className={`flex-grow p-4 sm:p-8 pt-16 lg:pt-8 transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''}`}>
+                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
                     {renderContent()}
                 </main>
                 {/* ChatModal removed; chat will be rendered inline in Messages */}
