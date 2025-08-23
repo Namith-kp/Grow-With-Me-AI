@@ -36,6 +36,20 @@ export default defineConfig(({ mode }) => {
           'cordova-plugin-firebasex': false,
           'expo-auth-session': false
         }
+      },
+      optimizeDeps: {
+        exclude: [
+          '@capacitor/core',
+          '@capacitor/android',
+          '@codetrix-studio/capacitor-google-auth',
+          'react-native',
+          '@react-native-firebase/app',
+          '@react-native-firebase/auth',
+          'react-native-chart-kit',
+          'react-native-svg',
+          'cordova-plugin-firebasex',
+          'expo-auth-session'
+        ]
       }
     };
 });

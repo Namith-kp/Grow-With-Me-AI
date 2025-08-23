@@ -59,24 +59,36 @@ const App: React.FC = () => {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
     useEffect(() => {
-        // Dynamically import Capacitor to avoid web build issues
-        import('@capacitor/core').then(({ Capacitor }) => {
-            const platform = Capacitor.getPlatform();
-            if (platform === 'android') {
-                // Initialize Google Auth for Android
-                import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
-                    GoogleAuth.initialize({
-                        clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
-                        scopes: ['profile', 'email'],
-                        grantOfflineAccess: true
-                    });
-                }).catch(err => {
-                    console.warn('GoogleAuth not available for web build:', err);
-                });
-            }
-        }).catch(err => {
-            console.warn('Capacitor not available for web build:', err);
-        });
+        // Only try to initialize mobile features if we're in a mobile environment
+        const isMobile = typeof window !== 'undefined' && 
+            (window.navigator.userAgent.includes('Android') || 
+             window.navigator.userAgent.includes('Mobile') ||
+             window.navigator.userAgent.includes('iPhone') ||
+             window.navigator.userAgent.includes('iPad'));
+        
+        if (isMobile) {
+            // Try to initialize Capacitor and Google Auth for mobile
+            Promise.all([
+                import('@capacitor/core').catch(() => null),
+                import('@codetrix-studio/capacitor-google-auth').catch(() => null)
+            ]).then(([capacitorModule, googleAuthModule]) => {
+                if (capacitorModule && googleAuthModule) {
+                    const { Capacitor } = capacitorModule;
+                    const { GoogleAuth } = googleAuthModule;
+                    
+                    const platform = Capacitor.getPlatform();
+                    if (platform === 'android') {
+                        GoogleAuth.initialize({
+                            clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
+                            scopes: ['profile', 'email'],
+                            grantOfflineAccess: true
+                        });
+                    }
+                }
+            }).catch(err => {
+                console.warn('Mobile features not available:', err);
+            });
+        }
 
         // Native Google sign-in from Android WebView
         const token = getTokenFromUrl();
