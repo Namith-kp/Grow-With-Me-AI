@@ -90,7 +90,7 @@ export const ConnectionsModal: React.FC<ConnectionsModalProps> = ({ connectionId
                                     />
                                     <div className="flex-1">
                                         <p className="font-semibold text-white text-sm">{user.name}</p>
-                                        <span className={user.role === 'Developer' ? 'text-blue-400' : user.role === 'Founder' ? 'text-purple-400' : 'text-emerald-400'} className="text-xs font-medium">
+                                        <span className={`${user.role === 'Developer' ? 'text-blue-400' : user.role === 'Founder' ? 'text-purple-400' : 'text-emerald-400'} text-xs font-medium`}>
                                             {user.role}
                                         </span>
                                     </div>

@@ -100,6 +100,7 @@ const App: React.FC = () => {
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isMobileNegotiationOpen, setIsMobileNegotiationOpen] = useState(false);
     const [selectedNegotiationId, setSelectedNegotiationId] = useState<string | null>(null);
+    const [showFallbackNotification, setShowFallbackNotification] = useState(false);
     const [nativeUser, setNativeUser] = useState<{ idToken: string; name: string; email: string; avatarUrl?: string } | null>(null);
     const nativeUserRef = useRef(nativeUser);
     useEffect(() => { nativeUserRef.current = nativeUser; }, [nativeUser]);
@@ -450,6 +451,15 @@ const App: React.FC = () => {
             
             const foundMatches = await findMatches(userProfile, potentialPartners);
             
+            // Check if fallback was used (this will be indicated by a console warning)
+            const isFallbackUsed = foundMatches.length > 0 && foundMatches[0].justification.includes("Strong match due to");
+            if (isFallbackUsed) {
+                console.log("Fallback matching algorithm was used due to API quota limits.");
+                setShowFallbackNotification(true);
+                // Hide notification after 5 seconds
+                setTimeout(() => setShowFallbackNotification(false), 5000);
+            }
+            
             const enrichedMatches = await Promise.all(foundMatches.map(async match => {
                 const user = potentialPartners.find(p => p.id === match.userId);
                 if (!user) return null;
@@ -709,6 +719,18 @@ const App: React.FC = () => {
                 <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
                     {renderContent()}
                 </main>
+                
+                {/* Fallback Notification */}
+                {showFallbackNotification && (
+                    <div className="fixed top-20 right-4 z-50 bg-amber-900/90 border border-amber-700/50 text-amber-100 px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm max-w-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium">Using fallback matching due to high API usage</span>
+                        </div>
+                        <p className="text-xs text-amber-200 mt-1">Matches are still accurate but may be less personalized.</p>
+                    </div>
+                )}
+                
                 {/* ChatModal removed; chat will be rendered inline in Messages */}
             </div>
         </CacheProvider>

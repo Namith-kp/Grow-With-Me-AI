@@ -77,8 +77,104 @@ export const findMatches = async (currentUser: User, potentialPartners: User[]):
         // Sort by compatibility score in descending order
         return matches.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error calling Gemini API:", error);
+        
+        // Check if it's a quota exceeded error
+        if (error?.error?.code === 429 || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+            console.warn("Gemini API quota exceeded. Using fallback matching algorithm.");
+            return generateFallbackMatches(currentUser, potentialPartners);
+        }
+        
         throw new Error("Failed to fetch matches from the AI. The Gemini API key may be invalid or there could be a network issue.");
     }
+};
+
+// Fallback matching algorithm when Gemini API quota is exceeded
+const generateFallbackMatches = (currentUser: User, potentialPartners: User[]): Match[] => {
+    const matches: Match[] = [];
+    
+    // Filter out the current user from potential partners
+    const otherUsers = potentialPartners.filter(user => user.id !== currentUser.id);
+    
+    // Simple matching algorithm based on role compatibility and location
+    const scoredUsers = otherUsers.map(user => {
+        let score = 50; // Base score
+        
+        // Role compatibility bonus
+        if (currentUser.role !== user.role) {
+            score += 20; // Different roles are better for co-founding
+        }
+        
+        // Location bonus (same location gets bonus)
+        if (currentUser.location && user.location && 
+            currentUser.location.toLowerCase() === user.location.toLowerCase()) {
+            score += 15;
+        }
+        
+        // Skills overlap bonus
+        const commonSkills = currentUser.skills.filter(skill => 
+            user.skills.includes(skill)
+        );
+        score += commonSkills.length * 5;
+        
+        // Interests overlap bonus
+        const commonInterests = currentUser.interests.filter(interest => 
+            user.interests.includes(interest)
+        );
+        score += commonInterests.length * 3;
+        
+        // Cap score at 100
+        score = Math.min(score, 100);
+        
+        return {
+            user,
+            score,
+            justification: generateFallbackJustification(currentUser, user, score)
+        };
+    });
+    
+    // Sort by score and take top 5
+    const topMatches = scoredUsers
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+    
+    return topMatches.map(match => ({
+        userId: match.user.id,
+        compatibilityScore: match.score,
+        justification: match.justification
+    }));
+};
+
+const generateFallbackJustification = (currentUser: User, matchedUser: User, score: number): string => {
+    const reasons: string[] = [];
+    
+    if (currentUser.role !== matchedUser.role) {
+        reasons.push("complementary roles");
+    }
+    
+    if (currentUser.location && matchedUser.location && 
+        currentUser.location.toLowerCase() === matchedUser.location.toLowerCase()) {
+        reasons.push("same location");
+    }
+    
+    const commonSkills = currentUser.skills.filter(skill => 
+        matchedUser.skills.includes(skill)
+    );
+    if (commonSkills.length > 0) {
+        reasons.push("shared skills");
+    }
+    
+    const commonInterests = currentUser.interests.filter(interest => 
+        matchedUser.interests.includes(interest)
+    );
+    if (commonInterests.length > 0) {
+        reasons.push("shared interests");
+    }
+    
+    if (reasons.length === 0) {
+        return "Good potential match based on profile analysis.";
+    }
+    
+    return `Strong match due to ${reasons.join(", ")}.`;
 };
