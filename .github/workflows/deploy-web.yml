@@ -1,0 +1,59 @@
+name: Deploy Web Version to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy-web:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Clear npm cache
+      run: npm cache clean --force
+        
+    - name: Install web dependencies only
+      run: |
+        # Create a temporary package.json without mobile dependencies
+        cp package.json package.json.backup
+        node -e "
+          const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+          delete pkg.dependencies['@capacitor/android'];
+          delete pkg.dependencies['@capacitor/cli'];
+          delete pkg.dependencies['@capacitor/core'];
+          delete pkg.dependencies['@codetrix-studio/capacitor-google-auth'];
+          delete pkg.dependencies['@react-native-firebase/app'];
+          delete pkg.dependencies['@react-native-firebase/auth'];
+          delete pkg.dependencies['react-native-chart-kit'];
+          delete pkg.dependencies['react-native-svg'];
+          delete pkg.dependencies['cordova-plugin-firebasex'];
+          delete pkg.dependencies['expo-auth-session'];
+          require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+        "
+        npm ci
+        
+    - name: Build web version
+      run: npm run build
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        
+    - name: Restore original package.json
+      run: mv package.json.backup package.json
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist
