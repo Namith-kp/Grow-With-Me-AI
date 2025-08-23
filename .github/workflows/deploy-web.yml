@@ -41,7 +41,7 @@ jobs:
           delete pkg.dependencies['expo-auth-session'];
           require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
         "
-        npm ci
+        npm ci || npm install
         
     - name: Build web version
       run: npm run build
