@@ -3,15 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://Namith-kp.github.io/Grow-With-Me-AI/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:web": "vite build --config vite.web.config.ts",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
-    "verify-build": "node scripts/verify-build.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
