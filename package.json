@@ -10,7 +10,8 @@
     "build:web": "vite build --config vite.web.config.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "verify-build": "node scripts/verify-build.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",

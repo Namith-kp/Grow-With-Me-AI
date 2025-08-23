@@ -41,6 +41,9 @@ jobs:
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         
+    - name: Verify build output
+      run: node scripts/verify-build.js
+        
     - name: Restore original package.json
       run: mv package.json.backup package.json
         

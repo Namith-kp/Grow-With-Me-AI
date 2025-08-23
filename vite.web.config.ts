@@ -3,8 +3,10 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isProduction = mode === 'production';
+    
     return {
-      base: '/Grow-With-Me-AI/',
+      base: isProduction ? '/Grow-With-Me-AI/' : '/',
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -12,6 +14,12 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          // Exclude mobile-specific files from web builds
+          './nativeGoogleAuth.android': './nativeGoogleAuth.web',
+          './nativeGoogleAuth.android.ts': './nativeGoogleAuth.web.ts',
+          '@capacitor/core': false,
+          '@capacitor/android': false,
+          '@codetrix-studio/capacitor-google-auth': false
         }
       },
       build: {
@@ -28,16 +36,6 @@ export default defineConfig(({ mode }) => {
                    id.includes('cordova') ||
                    id.includes('expo');
           }
-        }
-      },
-      resolve: {
-        alias: {
-          // Exclude mobile-specific files from web builds
-          './nativeGoogleAuth.android': './nativeGoogleAuth.web',
-          './nativeGoogleAuth.android.ts': './nativeGoogleAuth.web.ts',
-          '@capacitor/core': false,
-          '@capacitor/android': false,
-          '@codetrix-studio/capacitor-google-auth': false
         }
       },
       optimizeDeps: {
