@@ -30,6 +30,16 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
+      resolve: {
+        alias: {
+          // Exclude mobile-specific files from web builds
+          './nativeGoogleAuth.android': './nativeGoogleAuth.web',
+          './nativeGoogleAuth.android.ts': './nativeGoogleAuth.web.ts',
+          '@capacitor/core': false,
+          '@capacitor/android': false,
+          '@codetrix-studio/capacitor-google-auth': false
+        }
+      },
       optimizeDeps: {
         exclude: [
           '@capacitor/core',

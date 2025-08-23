@@ -8,8 +8,6 @@ function isAndroidWebView() {
 import { CacheProvider } from './app/CacheContext';
 // Add GoogleAuth plugin import
 import { nativeGoogleLogin } from './utils/nativeGoogleAuth';
-import { nativeGoogleLogin as nativeLoginWeb } from './utils/nativeGoogleAuth.web';
-import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAuth.android';
 // Capacitor will be imported dynamically to avoid web build issues
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Role } from './types';
@@ -340,16 +338,8 @@ const App: React.FC = () => {
         try {
             setAuthLoading(true);
             let result;
-            // Check platform dynamically to avoid build issues
-            const isAndroid = typeof window !== 'undefined' && 
-                (window.navigator.userAgent.includes('Android') || 
-                 window.navigator.userAgent.includes('Mobile'));
-            
-            if (isAndroid) {
-                result = await nativeLoginAndroid();
-            } else {
-                result = await nativeLoginWeb();
-            }
+            // Use the unified nativeGoogleLogin function that handles platform detection
+            result = await nativeGoogleLogin();
             console.log('Google Sign-In response:', result);
             // If result.user is not set in auth state, sign in with credential (for safety)
             if (result && result.idToken && !auth.currentUser) {
