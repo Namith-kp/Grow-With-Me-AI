@@ -1,10 +1,11 @@
 // No need to import Plugins from '@capacitor/core'
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
 export async function nativeGoogleLogin() {
   try {
+    // Dynamically import GoogleAuth to avoid web build issues
+    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
     // Initiate native Google login
     const googleUser = await GoogleAuth.signIn();
     // The GoogleAuth plugin returns an object with idToken and accessToken

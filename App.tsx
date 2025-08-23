@@ -10,7 +10,6 @@ import { CacheProvider } from './app/CacheContext';
 import { nativeGoogleLogin } from './utils/nativeGoogleAuth';
 import { nativeGoogleLogin as nativeLoginWeb } from './utils/nativeGoogleAuth.web';
 import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAuth.android';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Role } from './types';
@@ -63,10 +62,14 @@ const App: React.FC = () => {
         const platform = Capacitor.getPlatform();
         if (platform === 'android') {
             // Initialize Google Auth for Android
-            GoogleAuth.initialize({
-                clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
-                scopes: ['profile', 'email'],
-                grantOfflineAccess: true
+            import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
+                GoogleAuth.initialize({
+                    clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
+                    scopes: ['profile', 'email'],
+                    grantOfflineAccess: true
+                });
+            }).catch(err => {
+                console.warn('GoogleAuth not available for web build:', err);
             });
         }
 
