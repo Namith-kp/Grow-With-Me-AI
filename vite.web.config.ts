@@ -3,7 +3,6 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-    const isProduction = mode === 'production';
     
     return {
       base: '/Grow-With-Me-AI/',
@@ -26,12 +25,6 @@ export default defineConfig(({ mode }) => {
         outDir: 'dist',
         assetsDir: 'assets',
         rollupOptions: {
-          output: {
-            manualChunks: undefined,
-            assetFileNames: 'assets/[name]-[hash][extname]',
-            chunkFileNames: 'assets/[name]-[hash].js',
-            entryFileNames: 'assets/[name]-[hash].js'
-          },
           external: (id) => {
             // Completely externalize all mobile packages
             return id.includes('@capacitor') || 
