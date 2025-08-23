@@ -20,21 +20,14 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks: undefined
+          },
+          external: (id) => {
+            // Completely externalize all mobile packages
+            return id.includes('@capacitor') || 
+                   id.includes('react-native') || 
+                   id.includes('cordova') ||
+                   id.includes('expo');
           }
-        }
-      },
-      resolve: {
-        alias: {
-          '@capacitor/core': false,
-          '@capacitor/android': false,
-          '@codetrix-studio/capacitor-google-auth': false,
-          'react-native': false,
-          '@react-native-firebase/app': false,
-          '@react-native-firebase/auth': false,
-          'react-native-chart-kit': false,
-          'react-native-svg': false,
-          'cordova-plugin-firebasex': false,
-          'expo-auth-session': false
         }
       },
       optimizeDeps: {
@@ -50,16 +43,6 @@ export default defineConfig(({ mode }) => {
           'cordova-plugin-firebasex',
           'expo-auth-session'
         ]
-      },
-      build: {
-        rollupOptions: {
-          external: (id) => {
-            return id.includes('@capacitor') || 
-                   id.includes('react-native') || 
-                   id.includes('cordova') ||
-                   id.includes('expo');
-          }
-        }
       }
     };
 });

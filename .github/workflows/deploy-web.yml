@@ -37,7 +37,7 @@ jobs:
         npm ci --package-lock=package-lock.web.json
         
     - name: Build web version
-      run: npm run build
+      run: npm run build:web
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         
