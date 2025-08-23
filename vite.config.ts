@@ -3,8 +3,10 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isProduction = mode === 'production';
+    
     return {
-      base: '/Grow-With-Me-AI/',
+      base: isProduction ? '/Grow-With-Me-AI/' : '/',
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -12,19 +14,9 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
-      },
-      build: {
-        outDir: 'dist',
-        assetsDir: 'assets',
-        rollupOptions: {
-          output: {
-            manualChunks: undefined
-          }
-        }
-      },
-      resolve: {
-        alias: {
+          // Exclude mobile-specific files from web builds
+          './nativeGoogleAuth.android': './nativeGoogleAuth.web',
+          './nativeGoogleAuth.android.ts': './nativeGoogleAuth.web.ts',
           '@capacitor/core': false,
           '@capacitor/android': false,
           '@codetrix-studio/capacitor-google-auth': false,
@@ -35,6 +27,18 @@ export default defineConfig(({ mode }) => {
           'react-native-svg': false,
           'cordova-plugin-firebasex': false,
           'expo-auth-session': false
+        }
+      },
+      build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        rollupOptions: {
+          external: (id) => {
+            return id.includes('@capacitor') || 
+                   id.includes('react-native') || 
+                   id.includes('cordova') ||
+                   id.includes('expo');
+          }
         }
       },
       optimizeDeps: {
@@ -50,16 +54,6 @@ export default defineConfig(({ mode }) => {
           'cordova-plugin-firebasex',
           'expo-auth-session'
         ]
-      },
-      build: {
-        rollupOptions: {
-          external: (id) => {
-            return id.includes('@capacitor') || 
-                   id.includes('react-native') || 
-                   id.includes('cordova') ||
-                   id.includes('expo');
-          }
-        }
       }
     };
 });
