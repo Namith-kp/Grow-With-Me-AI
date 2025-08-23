@@ -47,5 +47,35 @@ The following environment variables are required:
 - `VITE_GEMINI_API_KEY`: Your Gemini API key
 
 See `.env.example` for the required format.
+
+## Deployment to GitHub Pages
+
+This app is configured to deploy to GitHub Pages. The deployment handles client-side routing automatically.
+
+### Automatic Deployment
+
+1. Push your changes to the `main` branch
+2. GitHub Actions will automatically build and deploy your app
+3. Your app will be available at: `https://yourusername.github.io/Grow-With-Me-AI/`
+
+### Manual Deployment
+
+1. Build the app:
+   ```bash
+   npm run build
+   ```
+2. Deploy the `dist` folder to GitHub Pages
+
+### Environment Variables for Deployment
+
+Make sure to add your `GEMINI_API_KEY` as a GitHub secret:
+1. Go to your repository Settings > Secrets and variables > Actions
+2. Add a new repository secret named `GEMINI_API_KEY`
+3. Set the value to your Gemini API key
+
+## Run Locally
+
 3. Run the app:
-   `npm run dev`
+   ```bash
+   npm run dev
+   ```
