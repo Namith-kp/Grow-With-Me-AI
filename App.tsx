@@ -454,9 +454,9 @@ const App: React.FC = () => {
             // Check if fallback was used
             if (isFallback) {
                 console.log("Fallback matching algorithm was used due to API quota limits.");
-                // Temporarily disabled notification for testing
-                // setShowFallbackNotification(true);
-                // setTimeout(() => setShowFallbackNotification(false), 5000);
+                setShowFallbackNotification(true);
+                // Hide notification after 5 seconds
+                setTimeout(() => setShowFallbackNotification(false), 5000);
             }
             
             const enrichedMatches = await Promise.all(foundMatches.map(async match => {
