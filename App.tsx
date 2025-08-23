@@ -10,7 +10,7 @@ import { CacheProvider } from './app/CacheContext';
 import { nativeGoogleLogin } from './utils/nativeGoogleAuth';
 import { nativeGoogleLogin as nativeLoginWeb } from './utils/nativeGoogleAuth.web';
 import { nativeGoogleLogin as nativeLoginAndroid } from './utils/nativeGoogleAuth.android';
-import { Capacitor } from '@capacitor/core';
+// Capacitor will be imported dynamically to avoid web build issues
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Role } from './types';
 import LandingPage from './components/LandingPage';
@@ -59,19 +59,24 @@ const App: React.FC = () => {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
     useEffect(() => {
-        const platform = Capacitor.getPlatform();
-        if (platform === 'android') {
-            // Initialize Google Auth for Android
-            import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
-                GoogleAuth.initialize({
-                    clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
-                    scopes: ['profile', 'email'],
-                    grantOfflineAccess: true
+        // Dynamically import Capacitor to avoid web build issues
+        import('@capacitor/core').then(({ Capacitor }) => {
+            const platform = Capacitor.getPlatform();
+            if (platform === 'android') {
+                // Initialize Google Auth for Android
+                import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
+                    GoogleAuth.initialize({
+                        clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
+                        scopes: ['profile', 'email'],
+                        grantOfflineAccess: true
+                    });
+                }).catch(err => {
+                    console.warn('GoogleAuth not available for web build:', err);
                 });
-            }).catch(err => {
-                console.warn('GoogleAuth not available for web build:', err);
-            });
-        }
+            }
+        }).catch(err => {
+            console.warn('Capacitor not available for web build:', err);
+        });
 
         // Native Google sign-in from Android WebView
         const token = getTokenFromUrl();
@@ -329,7 +334,12 @@ const App: React.FC = () => {
         try {
             setAuthLoading(true);
             let result;
-            if (Capacitor.getPlatform() === 'android') {
+            // Check platform dynamically to avoid build issues
+            const isAndroid = typeof window !== 'undefined' && 
+                (window.navigator.userAgent.includes('Android') || 
+                 window.navigator.userAgent.includes('Mobile'));
+            
+            if (isAndroid) {
                 result = await nativeLoginAndroid();
             } else {
                 result = await nativeLoginWeb();

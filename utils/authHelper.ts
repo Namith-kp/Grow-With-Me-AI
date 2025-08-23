@@ -1,12 +1,14 @@
-import { Capacitor } from '@capacitor/core';
 import { nativeGoogleLogin as webLogin } from './nativeGoogleAuth.web';
 import { nativeGoogleLogin as androidLogin } from './nativeGoogleAuth.android';
 
 export const handleGoogleLogin = async () => {
-  const platform = Capacitor.getPlatform();
+  // Check platform dynamically to avoid build issues
+  const isAndroid = typeof window !== 'undefined' && 
+    (window.navigator.userAgent.includes('Android') || 
+     window.navigator.userAgent.includes('Mobile'));
   
   try {
-    if (platform === 'android') {
+    if (isAndroid) {
       console.log('Using Android native login');
       return await androidLogin();
     } else {
@@ -14,7 +16,7 @@ export const handleGoogleLogin = async () => {
       return await webLogin();
     }
   } catch (error) {
-    console.error(`Login error on platform ${platform}:`, error);
+    console.error(`Login error on platform ${isAndroid ? 'android' : 'web'}:`, error);
     throw error;
   }
 };
