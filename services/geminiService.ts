@@ -28,7 +28,7 @@ const responseSchema = {
     },
 };
 
-export const findMatches = async (currentUser: User, potentialPartners: User[]): Promise<Match[]> => {
+export const findMatches = async (currentUser: User, potentialPartners: User[]): Promise<{ matches: Match[], isFallback: boolean }> => {
     const model = "gemini-2.5-flash";
 
     const prompt = `
@@ -75,7 +75,10 @@ export const findMatches = async (currentUser: User, potentialPartners: User[]):
         const matches: Match[] = JSON.parse(jsonText);
         
         // Sort by compatibility score in descending order
-        return matches.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+        return {
+            matches: matches.sort((a, b) => b.compatibilityScore - a.compatibilityScore),
+            isFallback: false
+        };
 
     } catch (error: any) {
         console.error("Error calling Gemini API:", error);
@@ -83,7 +86,10 @@ export const findMatches = async (currentUser: User, potentialPartners: User[]):
         // Check if it's a quota exceeded error
         if (error?.error?.code === 429 || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
             console.warn("Gemini API quota exceeded. Using fallback matching algorithm.");
-            return generateFallbackMatches(currentUser, potentialPartners);
+            return {
+                matches: generateFallbackMatches(currentUser, potentialPartners),
+                isFallback: true
+            };
         }
         
         throw new Error("Failed to fetch matches from the AI. The Gemini API key may be invalid or there could be a network issue.");
