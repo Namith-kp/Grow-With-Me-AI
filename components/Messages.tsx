@@ -11,9 +11,10 @@ interface MessagesProps {
     currentUser: User;
     connections: User[];
     setIsMobileChatOpen: (isOpen: boolean) => void;
+    selectedUserForChat?: User | null;
 }
 
-const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, setIsMobileChatOpen }) => {
+const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, setIsMobileChatOpen, selectedUserForChat: propSelectedUser }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUserForChat, setSelectedUserForChat] = useState<User | null>(null);
     const [isMobileChatOpenLocal, setIsMobileChatOpenLocal] = useState(false);
@@ -28,6 +29,24 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, se
         
         return () => unsubscribe();
     }, [currentUser.id]);
+
+    // Handle prop selected user - automatically open chat when user is selected from outside
+    useEffect(() => {
+        if (propSelectedUser) {
+            setSelectedUserForChat(propSelectedUser);
+            setIsMobileChatOpenLocal(true);
+            setIsMobileChatOpen(true);
+            
+            // Mark chat as read when user opens it (if chat exists)
+            const chat = realtimeChats.find(c => 
+                c.participantDetails.some(p => p.id === propSelectedUser.id)
+            );
+            if (chat) {
+                firestoreService.markChatAsRead(chat.id, currentUser.id);
+            }
+            // If no chat exists, that's fine - ChatPanel will create it when first message is sent
+        }
+    }, [propSelectedUser, currentUser.id, realtimeChats, setIsMobileChatOpen]);
 
     const sortedChats = [...realtimeChats].sort((a, b) => {
         const timeA = a.lastMessage?.timestamp ? new Date((a.lastMessage.timestamp as any).seconds * 1000).getTime() : 0;

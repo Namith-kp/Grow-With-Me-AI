@@ -297,8 +297,19 @@ const App: React.FC = () => {
                                 console.error('Error starting user session:', error);
                             }
                         }
-                        // Relaxed: Show dashboard if profile exists
-                        navigate(View.DASHBOARD);
+                        // Check if user has completed onboarding (has meaningful profile data)
+                        const hasCompletedOnboarding = profile.name && 
+                                                     profile.name.trim() !== '' && 
+                                                     profile.role && 
+                                                     profile.location && 
+                                                     profile.skills && 
+                                                     profile.skills.length > 0;
+                        
+                        if (hasCompletedOnboarding) {
+                            navigate(View.DASHBOARD);
+                        } else {
+                            navigate(View.ONBOARDING);
+                        }
                     } else {
                         navigate(View.ONBOARDING);
                     }
@@ -543,6 +554,7 @@ const App: React.FC = () => {
 
     const handleMessageUser = (partner: User) => {
         setSelectedUserForChat(partner);
+        setView(View.MESSAGES);
     };
 
     const handleRemoveConnection = async (connectionToRemove: User) => {
@@ -678,6 +690,7 @@ const App: React.FC = () => {
                     currentUser={userProfile} 
                     connections={connections}
                     setIsMobileChatOpen={setIsMobileChatOpen}
+                    selectedUserForChat={selectedUserForChat}
                 />;
 
             case View.IDEAS:
@@ -709,7 +722,7 @@ const App: React.FC = () => {
 
     return (
         <CacheProvider>
-            <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+            <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
                 {(areKeysMissing || authConfigError === 'unauthorized-domain') && <ApiKeysNotice isDomainError={authConfigError === 'unauthorized-domain'} />}
                 {(view !== View.LANDING && view !== View.AUTH) && (
                     <Header 
@@ -723,7 +736,7 @@ const App: React.FC = () => {
                         isMobileNegotiationOpen={isMobileNegotiationOpen}
                     />
                 )}
-                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
+                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
                     {renderContent()}
                 </main>
                 

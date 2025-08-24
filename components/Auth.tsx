@@ -34,50 +34,79 @@ const AuthComponent = ({ onGoogleLogin, onGuestLogin, error, authUser }: AuthCom
         }
     };
     return (
-        <div className="relative min-h-screen w-full overflow-hidden bg-black">
-            {/* Gradient background, blurred circles, grid pattern */}
+        <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-slate-950 to-black">
+            {/* Background with subtle grid pattern */}
             <div className="fixed inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-black to-slate-950" />
-                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse-slow" />
-                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl animate-pulse-slow" />
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-slate-400/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
             </div>
-            {/* Logo and heading */}
-            <div className="flex flex-col items-center z-30 pt-10 mb-5 relative">
-                <div className="relative flex items-center justify-center mb-2">
-                    <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-gradient-to-br from-purple-500/40 via-fuchsia-400/30 to-blue-400/30 blur-xl animate-pulse-slow" />
-                    <LogoIcon className="w-20 h-20 sm:w-28 sm:h-28 text-emerald-400 drop-shadow-2xl z-10" />
+
+            {/* Main Content */}
+            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+                {/* Logo and Branding */}
+                <div className="text-center mb-8 sm:mb-12">
+                    <div className="relative flex items-center justify-center mb-6">
+                        <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-gradient-to-br from-purple-500/20 via-fuchsia-400/15 to-blue-400/20 blur-xl animate-pulse-slow" />
+                        <LogoIcon className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-emerald-400 drop-shadow-2xl z-10" />
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+                        Welcome to
+                        <span className="text-emerald-400 font-bold"> Grow With Me</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm sm:text-base lg:text-lg">
+                        Connect, collaborate, and grow your network
+                    </p>
                 </div>
-                <span className="text-3xl md:text-4xl font-light mb-4">
-                    Sign in to
-                    <span className="text-emerald-400 font-light"> Grow With Me</span>
-                    
-                </span>
-                
-            </div>
-            {/* Auth Card - glassmorphism, rounded, shadow, border */}
-            <div className="relative max-w-md w-full mx-auto bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-800/90 border border-emerald-400/20 rounded-2xl p-8 space-y-6 shadow-2xl shadow-emerald-900/20 z-30 backdrop-blur-xl">
-                <h2 className="text-3xl font-light text-white mb-2">Join the Network</h2>
-                <p className="text-neutral-300 text-lg font-light">
-                    Sign in to save your profile and connect with others, or continue as a guest to explore the platform.
-                </p>
-                <div className="flex flex-col space-y-4 pt-4">
-                    {error && <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-sm mb-4 text-left">{error}</div>}
-                    {!authUser && (
-                        <button
-                            onClick={handleGoogleSignIn}
-                            className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-emerald-600/20 text-lg tracking-wide border-2 border-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-400/30"
-                        >
-                            <GoogleIcon className="w-6 h-6" />
-                            Sign In with Google
-                        </button>
-                    )}
-                    <button
-                        onClick={onGuestLogin}
-                        className="flex items-center justify-center gap-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 w-full border border-neutral-700/40 text-lg"
-                    >
-                        Continue as Guest
-                    </button>
+
+                {/* Single Auth Card */}
+                <div className="w-full max-w-md">
+                    <div className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-xl sm:rounded-2xl p-6 sm:p-8 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10">
+                        <div className="text-center mb-8">
+                            <h2 className="text-xl sm:text-2xl font-bold text-white mb-3">Join the Network</h2>
+                            <p className="text-slate-400 text-sm sm:text-base">
+                                Sign in to save your profile and connect with others, or continue as a guest to explore the platform.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {error && (
+                                <div className="bg-red-900/30 border border-red-700/30 text-red-300 p-3 sm:p-4 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
+                            
+                            {!authUser && (
+                                <button
+                                    onClick={handleGoogleSignIn}
+                                    className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-slate-800/50 to-slate-700/50 hover:from-slate-700/50 hover:to-slate-600/50 text-white font-medium py-3 sm:py-4 px-6 rounded-lg sm:rounded-xl transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50 text-sm sm:text-base"
+                                >
+                                    <GoogleIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    Sign In with Google
+                                </button>
+                            )}
+                            
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-slate-700/30"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-gradient-to-br from-slate-900/90 to-black/90 px-2 text-slate-400">or</span>
+                                </div>
+                            </div>
+                            
+                            <button
+                                onClick={onGuestLogin}
+                                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-slate-800/50 to-slate-700/50 hover:from-slate-700/50 hover:to-slate-600/50 text-white font-medium py-3 sm:py-4 px-6 rounded-lg sm:rounded-xl transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50 text-sm sm:text-base"
+                            >
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Continue as Guest
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -55,7 +55,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-
     const nextStep = () => setStep(s => s + 1);
     const prevStep = () => setStep(s => s - 1);
 
@@ -97,154 +96,314 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
     };
 
     const steps = [
-        { title: 'Your Role', icon: <UserIcon className="w-6 h-6" /> },
-        { title: 'About You', icon: <BriefcaseIcon className="w-6 h-6" /> },
-        { title: 'Your Vision', icon: <LightbulbIcon className="w-6 h-6" /> },
-        { title: 'Confirmation', icon: <CheckCircleIcon className="w-6 h-6" /> }
+        { title: 'Basic Info', description: 'Tell us about yourself', icon: <UserIcon className="w-5 h-5" /> },
+        { title: 'Experience', description: 'Share your background', icon: <BriefcaseIcon className="w-5 h-5" /> },
+        { title: 'Preferences', description: 'What are you looking for?', icon: <LightbulbIcon className="w-5 h-5" /> },
+        { title: 'Review', description: 'Review your profile', icon: <CheckCircleIcon className="w-5 h-5" /> }
     ];
 
     return (
-        <div className="max-w-3xl mx-auto p-4 sm:p-8 bg-neutral-900 rounded-2xl shadow-2xl shadow-purple-900/10 border border-neutral-800">
-            <div className="mb-8">
-                <ol className="flex items-center w-full">
-                    {steps.map((s, index) => (
-                        <li key={index} className={`flex w-full items-center ${index + 1 < steps.length ? "after:content-[''] after:w-full after:h-1 after:border-b after:border-neutral-700 after:inline-block" : ""} ${index < step ? 'text-purple-500' : 'text-neutral-500'}`}>
-                            <span className={`flex items-center justify-center w-10 h-10 rounded-full lg:h-12 lg:w-12 shrink-0 ${index < step ? 'bg-purple-900/50' : 'bg-neutral-800'}`}>
-                                {s.icon}
-                            </span>
-                        </li>
-                    ))}
-                </ol>
-            </div>
-            
-            <h2 className="text-3xl font-bold text-white mb-2">{steps[step - 1].title}</h2>
-            <p className="text-neutral-400 mb-8">Let's build your profile to find the best matches.</p>
+        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+            <div className="w-full max-w-lg">
+                {/* Progress */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-slate-400">Step {step} of 4</span>
+                        <span className="text-sm text-slate-400">{Math.round((step / 4) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 rounded-full h-1.5">
+                        <div 
+                            className="bg-gradient-to-r from-slate-500 to-slate-400 h-1.5 rounded-full transition-all duration-500"
+                            style={{ width: `${(step / 4) * 100}%` }}
+                        ></div>
+                    </div>
+                </div>
 
-            <div className="space-y-6">
-                {step === 1 && (
-                    <>
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-neutral-300 mb-2">Full Name</label>
-                            <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g., Ada Lovelace" required />
+                {/* Step Header */}
+                <div className="text-center mb-8">
+                    <div className="flex items-center justify-center mb-3">
+                        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center mr-3">
+                            {steps[step - 1].icon}
                         </div>
-                        <div>
-                            <label htmlFor="role" className="block text-sm font-medium text-neutral-300 mb-2">What is your primary role?</label>
-                            <select name="role" id="role" value={formData.role} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
-                                {Object.values(Role).map(role => <option key={role} value={role}>{role}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="location" className="block text-sm font-medium text-neutral-300 mb-2">Location</label>
-                            <input type="text" name="location" id="location" value={formData.location} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g., London, UK" required />
-                        </div>
-                    </>
-                )}
-                {step === 2 && formData.role === Role.Investor && (
-                    <>
-                        <div>
-                            <label htmlFor="interestedDomains" className="block text-sm font-medium text-neutral-300 mb-2">Domains of Interest (comma-separated)</label>
-                            <input type="text" name="interestedDomains" id="interestedDomains" value={formData.interestedDomains} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="e.g., SaaS, Deep Tech, HealthTech" required />
-                        </div>
-                        <div>
-                            <label htmlFor="investmentExperience" className="block text-sm font-medium text-neutral-300 mb-2">Investment Experience</label>
-                            <textarea name="investmentExperience" id="investmentExperience" rows={4} value={formData.investmentExperience} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="Describe your past investments and what you look for in a startup." required></textarea>
-                        </div>
-                    </>
-                )}
+                        <h1 className="text-2xl font-bold text-white">{steps[step - 1].title}</h1>
+                    </div>
+                    <p className="text-slate-400">{steps[step - 1].description}</p>
+                </div>
 
-                {step === 3 && formData.role === Role.Investor && (
-                    <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Form Content */}
+                <div className="space-y-4">
+                    {step === 1 && (
+                        <>
                             <div>
-                                <label htmlFor="minBudget" className="block text-sm font-medium text-neutral-300 mb-2">Investment Budget (Min)</label>
-                                <input type="number" name="minBudget" id="minBudget" value={formData.minBudget} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="e.g., 25000" required />
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    name="name" 
+                                    value={formData.name} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    placeholder="Enter your full name" 
+                                    required 
+                                />
                             </div>
                             <div>
-                                <label htmlFor="maxBudget" className="block text-sm font-medium text-neutral-300 mb-2">Investment Budget (Max)</label>
-                                <input type="number" name="maxBudget" id="maxBudget" value={formData.maxBudget} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="e.g., 100000" required />
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Role</label>
+                                <select 
+                                    name="role" 
+                                    value={formData.role} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    required
+                                >
+                                    {Object.values(Role).map(role => <option key={role} value={role}>{role}</option>)}
+                                </select>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="minEquity" className="block text-sm font-medium text-neutral-300 mb-2">Expected Equity (Min %)</label>
-                                <input type="number" name="minEquity" id="minEquity" value={formData.minEquity} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="e.g., 5" required />
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Location</label>
+                                <input 
+                                    type="text" 
+                                    name="location" 
+                                    value={formData.location} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    placeholder="City, Country" 
+                                    required 
+                                />
                             </div>
-                            <div>
-                                <label htmlFor="maxEquity" className="block text-sm font-medium text-neutral-300 mb-2">Expected Equity (Max %)</label>
-                                <input type="number" name="maxEquity" id="maxEquity" value={formData.maxEquity} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white" placeholder="e.g., 15" required />
-                            </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    )}
 
-                {step === 2 && formData.role !== Role.Investor && (
-                    <>
-                        <div>
-                            <label htmlFor="skills" className="block text-sm font-medium text-neutral-300 mb-2">Your Top Skills (comma-separated)</label>
-                            <input type="text" name="skills" id="skills" value={formData.skills} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g., React, Node.js, Product Management" required />
+                    {step === 2 && formData.role === Role.Investor && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Investment Domains</label>
+                                <input 
+                                    type="text" 
+                                    name="interestedDomains" 
+                                    value={formData.interestedDomains} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    placeholder="e.g., SaaS, FinTech, HealthTech" 
+                                    required 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Investment Experience</label>
+                                <textarea 
+                                    name="investmentExperience" 
+                                    rows={3} 
+                                    value={formData.investmentExperience} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all resize-none" 
+                                    placeholder="Describe your investment experience..." 
+                                    required
+                                ></textarea>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 2 && formData.role !== Role.Investor && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Skills</label>
+                                <input 
+                                    type="text" 
+                                    name="skills" 
+                                    value={formData.skills} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    placeholder="e.g., React, Product Management, Sales" 
+                                    required 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Experience</label>
+                                <textarea 
+                                    name="experience" 
+                                    rows={3} 
+                                    value={formData.experience} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all resize-none" 
+                                    placeholder="Describe your professional experience..." 
+                                    required
+                                ></textarea>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 3 && formData.role === Role.Investor && (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Min Budget ($)</label>
+                                    <input 
+                                        type="number" 
+                                        name="minBudget" 
+                                        value={formData.minBudget} 
+                                        onChange={handleChange} 
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                        placeholder="25000" 
+                                        required 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Max Budget ($)</label>
+                                    <input 
+                                        type="number" 
+                                        name="maxBudget" 
+                                        value={formData.maxBudget} 
+                                        onChange={handleChange} 
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                        placeholder="100000" 
+                                        required 
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Min Equity (%)</label>
+                                    <input 
+                                        type="number" 
+                                        name="minEquity" 
+                                        value={formData.minEquity} 
+                                        onChange={handleChange} 
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                        placeholder="5" 
+                                        required 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Max Equity (%)</label>
+                                    <input 
+                                        type="number" 
+                                        name="maxEquity" 
+                                        value={formData.maxEquity} 
+                                        onChange={handleChange} 
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                        placeholder="15" 
+                                        required 
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 3 && formData.role !== Role.Investor && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Interests</label>
+                                <input 
+                                    type="text" 
+                                    name="interests" 
+                                    value={formData.interests} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
+                                    placeholder="e.g., AI, FinTech, Sustainable Tech" 
+                                    required 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Looking for in a co-founder</label>
+                                <textarea 
+                                    name="lookingFor" 
+                                    rows={3} 
+                                    value={formData.lookingFor} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all resize-none" 
+                                    placeholder="Describe your ideal co-founder..." 
+                                    required
+                                ></textarea>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 4 && (
+                        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4">Profile Summary</h3>
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Name:</span>
+                                    <span className="text-white">{formData.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Role:</span>
+                                    <span className="text-white">{formData.role}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Location:</span>
+                                    <span className="text-white">{formData.location}</span>
+                                </div>
+                                {formData.role === Role.Investor ? (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Domains:</span>
+                                            <span className="text-white">{formData.interestedDomains}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Budget:</span>
+                                            <span className="text-white">${formData.minBudget} - ${formData.maxBudget}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Skills:</span>
+                                            <span className="text-white">{formData.skills}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Interests:</span>
+                                            <span className="text-white">{formData.interests}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div>
-                            <label htmlFor="experience" className="block text-sm font-medium text-neutral-300 mb-2">Your Experience</label>
-                            <textarea name="experience" id="experience" rows={4} value={formData.experience} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Describe your professional background and key achievements." required></textarea>
-                        </div>
-                    </>
-                )}
-                {step === 3 && formData.role !== Role.Investor && (
-                     <>
-                        <div>
-                            <label htmlFor="interests" className="block text-sm font-medium text-neutral-300 mb-2">Your Interests (comma-separated)</label>
-                            <input type="text" name="interests" id="interests" value={formData.interests} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g., AI, FinTech, Sustainable Tech" required />
-                        </div>
-                        <div>
-                            <label htmlFor="lookingFor" className="block text-sm font-medium text-neutral-300 mb-2">What are you looking for in a co-founder?</label>
-                            <textarea name="lookingFor" id="lookingFor" rows={4} value={formData.lookingFor} onChange={handleChange} className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Describe your ideal partner's skills, role, and mindset." required></textarea>
-                        </div>
-                    </>
-                )}
-                 {step === 4 && (
-                    <div className="bg-neutral-800/50 p-6 rounded-lg border border-neutral-700">
-                        <h3 className="text-xl font-bold text-white mb-4">Review Your Profile</h3>
-                        <p><strong>Name:</strong> {formData.name}</p>
-                        <p><strong>Role:</strong> {formData.role}</p>
-                        <p><strong>Location:</strong> {formData.location}</p>
-                        {formData.role === Role.Investor ? (
-                            <>
-                                <p><strong>Domains:</strong> {formData.interestedDomains}</p>
-                                <p><strong>Budget:</strong> ${formData.minBudget} - ${formData.maxBudget}</p>
-                                <p><strong>Equity:</strong> {formData.minEquity}% - {formData.maxEquity}%</p>
-                            </>
-                        ) : (
-                            <>
-                                <p><strong>Skills:</strong> {formData.skills}</p>
-                                <p><strong>Interests:</strong> {formData.interests}</p>
-                            </>
-                        )}
-                        <p className="mt-4">Ready to find your match?</p>
+                    )}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex justify-between mt-8">
+                    <button 
+                        onClick={prevStep} 
+                        disabled={step === 1} 
+                        className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Back
+                    </button>
+                    
+                    {step < 4 ? (
+                        <button 
+                            onClick={nextStep} 
+                            className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors"
+                        >
+                            Next
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={handleSubmit} 
+                            disabled={loading} 
+                            className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? (
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                            ) : (
+                                <RocketIcon className="w-4 h-4" />
+                            )}
+                            Complete Profile
+                        </button>
+                    )}
+                </div>
+
+                {error && (
+                    <div className="mt-4 p-3 bg-red-900/30 border border-red-700/30 text-red-300 rounded-lg text-sm text-center">
+                        {error}
                     </div>
                 )}
             </div>
-
-            <div className="mt-8 flex justify-between">
-                <button onClick={prevStep} disabled={step === 1} className="bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    Back
-                </button>
-                {step < 4 ? (
-                    <button onClick={nextStep} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                        Next
-                    </button>
-                ) : (
-                    <button onClick={handleSubmit} disabled={loading} className={`bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        {loading ? (
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                        ) : (
-                            <RocketIcon className="w-5 h-5" />
-                        )}
-                        Finish & Find Matches
-                    </button>
-                )}
-            </div>
-    {error && <div className="mt-4 text-red-500 font-semibold text-center">{error}</div>}
-    </div>
+        </div>
     );
 };
 
