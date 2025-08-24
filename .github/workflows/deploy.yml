@@ -23,14 +23,31 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Debug package.json
+      run: |
+        echo "=== Package.json content ==="
+        cat package.json
+        echo "=== Package-lock.json size ==="
+        ls -la package-lock.json
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
         
+    - name: Clear npm cache
+      run: npm cache clean --force
+      
     - name: Install dependencies
-      run: npm ci
+      run: |
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        echo "Current directory: $(pwd)"
+        echo "Files in directory: $(ls -la)"
+        echo "Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+        echo "Package-lock.json exists: $(test -f package-lock.json && echo 'YES' || echo 'NO')"
+        npm ci --legacy-peer-deps || npm install --legacy-peer-deps
       
     - name: Build project
       run: npm run build
