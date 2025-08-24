@@ -4,7 +4,7 @@ import { SendIcon, ArrowLeftIcon } from './icons';
 import { db } from '../firebase';
 import { firestoreService } from '../services/firestoreService';
 import firebase from 'firebase/compat/app';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 
 interface ChatPanelProps {

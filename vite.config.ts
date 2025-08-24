@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
           'react-native-svg': '',
           'cordova-plugin-firebasex': '',
           'expo-auth-session': '',
-          'motion/react': 'framer-motion'
+
         }
       },
       build: {

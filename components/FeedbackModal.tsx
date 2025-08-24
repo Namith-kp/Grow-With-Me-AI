@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { XIcon, StarIcon } from './icons';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FeedbackModalProps {
     user: User;

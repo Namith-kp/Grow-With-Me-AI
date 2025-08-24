@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { firestoreService } from '../services/firestoreService';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { XIcon } from './icons';
 
 interface ConnectionsModalProps {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Negotiation, Role } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import NegotiationDeck from './NegotiationDeck';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { LightbulbIcon, UsersIcon, CheckIcon, XIcon, SearchIcon, ArrowLeftIcon } from './icons';
 

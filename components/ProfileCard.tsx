@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { XIcon, MapPinIcon, BrainCircuitIcon, CodeIcon, BullseyeIcon, MessageSquareIcon, UserPlusIcon, LinkIcon } from './icons';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { firestoreService } from '../services/firestoreService';
 

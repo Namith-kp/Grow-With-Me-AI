@@ -6,7 +6,7 @@ import JoinRequests from './JoinRequests';
 import TeamManagementModal from './TeamManagementModal';
 import NegotiationDeck from './NegotiationDeck';
 import IdeaDetailModal from './IdeaDetailModal';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 
 // Custom hook for responsive animation timing

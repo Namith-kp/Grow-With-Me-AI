@@ -10,7 +10,7 @@ import NegotiationDeck from './NegotiationDeck';
 import { ConnectionsModal } from './ConnectionsModal';
 import InfoModal from './InfoModal';
 import FounderNegotiations from './FounderNegotiations';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 
 // Custom hook for responsive animation timing

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ChatPanel from './ChatPanel';
 import { Chat, User } from '../types';
 import { SearchIcon, SendIcon } from './icons';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { firestoreService } from '../services/firestoreService';
 

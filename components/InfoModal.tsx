@@ -1,6 +1,6 @@
 import React from 'react';
 import { XIcon, CheckCircleIcon, AlertTriangleIcon } from './icons';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface InfoModalProps {
     title: string;
