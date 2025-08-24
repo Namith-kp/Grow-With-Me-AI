@@ -35,7 +35,8 @@ export default defineConfig(({ mode }) => {
                    id.includes('react-native') || 
                    id.includes('cordova') ||
                    id.includes('expo') ||
-                   id.includes('@codetrix-studio');
+                   id.includes('@codetrix-studio') ||
+                   id.includes('d3-format/src/exponent.js');
           }
         },
         // Ensure assets are built with proper paths
@@ -63,12 +64,23 @@ export default defineConfig(({ mode }) => {
         {
           name: 'fix-d3-format-exponent',
           transform(code, id) {
-            // Replace the problematic import
+            // Remove the problematic import completely
             if (code.includes('from"../node_modules/d3-format/src/exponent.js"')) {
               return code.replace(
                 'from"../node_modules/d3-format/src/exponent.js"',
                 'from"./utils/empty-module.js"'
               );
+            }
+            // Also handle other variations
+            if (code.includes('require("../node_modules/d3-format/src/exponent.js")')) {
+              return code.replace(
+                'require("../node_modules/d3-format/src/exponent.js")',
+                'require("./utils/empty-module.js")'
+              );
+            }
+            // Handle any other exponent.js references
+            if (code.includes('exponent.js')) {
+              return code.replace(/exponent\.js/g, 'empty-module.js');
             }
             return code;
           }

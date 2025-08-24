@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnalyticsData } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+// Removed recharts import to avoid exponent.js issue
 import { UsersIcon, CheckCheckIcon, HeartIcon, ChatBubbleLeftRightIcon, LightbulbIcon, ZapIcon } from './icons';
 
 interface AnalyticsDashboardProps {
@@ -45,19 +45,19 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data, founderEn
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
                     <h2 className="text-xl font-semibold text-white mb-4">Daily Active Users (Last 7 Days)</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={data.platformPerformance.dau_data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-                            <YAxis stroke="#9ca3af" fontSize={12} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem' }}
-                                labelStyle={{ color: '#f3f4f6' }}
-                            />
-                            <Legend />
-                            <Line type="monotone" dataKey="users" stroke="#8b5cf6" strokeWidth={2} activeDot={{ r: 8 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    <div className="h-80 flex items-center justify-center">
+                        <div className="text-center">
+                            <p className="text-neutral-400 mb-4">Chart temporarily unavailable</p>
+                            <div className="space-y-2">
+                                {data.platformPerformance.dau_data.map((item, index) => (
+                                    <div key={index} className="flex justify-between items-center bg-neutral-800 p-2 rounded">
+                                        <span className="text-neutral-300">{item.name}</span>
+                                        <span className="text-purple-400 font-semibold">{item.users} users</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
