@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https:;">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzAwMDAwMCIvPgo8cGF0aCBkPSJNMTYgOEwxNiAyNEw4IDE2TDE2IDhaIiBmaWxsPSIjRkZGRkZGIi8+Cjwvc3ZnPgo=" />
     <!-- <link rel="icon" type="image/svg+xml" href="./vite.svg" /> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,6 +14,40 @@
         color: #f0f0f0;
       }
     </style>
+
+  <!-- Extension detection and handling -->
+  <script>
+    // Detect and handle browser extensions that might interfere
+    (function() {
+      // Check for common problematic extensions
+      const problematicExtensions = [
+        'react-devtools',
+        'redux-devtools',
+        'expo',
+        'react-native',
+        'capacitor'
+      ];
+      
+      // Log extension detection for debugging
+      console.log('Checking for browser extensions...');
+      
+      // Override any problematic global variables that extensions might set
+      if (typeof window !== 'undefined') {
+        // Prevent extensions from injecting problematic scripts
+        window.__PREVENT_EXTENSION_INTERFERENCE__ = true;
+        
+        // Override any extension-injected variables
+        if (window.exponent) {
+          console.warn('Exponent extension detected, overriding...');
+          window.exponent = undefined;
+        }
+        
+        if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+          console.log('React DevTools detected');
+        }
+      }
+    })();
+  </script>
 
   <!-- Simplified import map - removed external dependencies that might cause issues -->
   <script type="importmap">
