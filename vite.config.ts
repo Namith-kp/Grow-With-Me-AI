@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const isProduction = mode === 'production';
     
     return {
-      base: '/Grow-With-Me-AI/', // Set to your repo name
+  base: '/', // Set to root for Vercel
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
