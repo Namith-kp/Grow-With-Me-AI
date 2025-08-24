@@ -4,53 +4,30 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d dist"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@capacitor/android": "^7.4.2",
-    "@capacitor/cli": "^7.4.2",
-    "@capacitor/core": "^7.4.2",
-    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@google/genai": "^1.11.0",
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-slot": "^1.2.3",
-    "@react-native-firebase/app": "^23.0.0",
-    "@react-native-firebase/auth": "^23.0.0",
-    "@react-spring/three": "^10.0.1",
-    "@react-spring/web": "^10.0.1",
-    "@react-three/drei": "^10.6.1",
-    "@react-three/fiber": "^9.3.0",
-    "@react-three/postprocessing": "^3.0.4",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "cordova-plugin-firebasex": "^18.0.7",
-    "expo-auth-session": "^6.2.1",
     "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "leva": "^0.10.0",
     "lucide-react": "^0.536.0",
-    "motion": "^12.23.12",
     "ogl": "^1.0.11",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
-    "react-native-chart-kit": "^6.12.0",
-    "react-native-svg": "^15.12.1",
     "react-spinners": "^0.17.0",
-    "react-spring": "^10.0.1",
     "recharts": "^3.1.0",
-    "tailwind-merge": "^3.3.1",
-    "three": "^0.179.1",
-    "three-stdlib": "^2.36.0"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@react-native-community/cli": "latest",
     "@types/node": "^22.17.0",
-    "@types/three": "^0.178.1",
     "autoprefixer": "^10.4.21",
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
@@ -58,10 +35,5 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
-  },
-  "overrides": {
-    "@codetrix-studio/capacitor-google-auth": {
-      "@capacitor/core": "^7.4.2"
-    }
   }
 }
