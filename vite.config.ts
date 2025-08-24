@@ -41,7 +41,9 @@ export default defineConfig(({ mode }) => {
         // Ensure assets are built with proper paths
         assetsInlineLimit: 0,
         // Fix for Vercel deployment
-        target: 'es2015'
+        target: 'es2015',
+        // Bundle all dependencies
+        ssr: false
       },
       optimizeDeps: {
         exclude: [
