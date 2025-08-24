@@ -47,7 +47,18 @@ jobs:
         echo "Files in directory: $(ls -la)"
         echo "Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
         echo "Package-lock.json exists: $(test -f package-lock.json && echo 'YES' || echo 'NO')"
-        npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        # Clean install to avoid platform-specific binary issues
+        rm -rf node_modules package-lock.json
+        npm install --no-optional --platform=linux --arch=x64
+        
+    - name: Verify dependencies
+      run: |
+        echo "=== Installed packages ==="
+        npm list --depth=0
+        echo "=== Rollup version ==="
+        npm list rollup
+        echo "=== Vite version ==="
+        npm list vite
       
     - name: Build project
       run: npm run build
