@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const isProduction = mode === 'production';
     
     return {
-      base: isProduction ? '/Grow-With-Me-AI/' : '/',
+    base: '/Grow-With-Me-AI/', // Set to your repo name
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
