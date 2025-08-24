@@ -6,23 +6,23 @@ export default defineConfig(({ mode }) => {
     const isProduction = mode === 'production';
     
     return {
-  base: '/', // Set to root for Vercel
+      base: '/', // Set to root for Vercel
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
           // Exclude mobile-specific files from web builds
           './nativeGoogleAuth.android': './nativeGoogleAuth.web',
           './nativeGoogleAuth.android.ts': './nativeGoogleAuth.web.ts',
-          '@capacitor/core': '',
-          '@capacitor/android': '',
-          '@codetrix-studio/capacitor-google-auth': '',
-          'react-native': '',
-          '@react-native-firebase/app': '',
-          '@react-native-firebase/auth': '',
-          'react-native-chart-kit': '',
-          'react-native-svg': '',
-          'cordova-plugin-firebasex': '',
-          'expo-auth-session': '',
+          '@capacitor/core': path.resolve(__dirname, 'utils/empty-module.js'),
+          '@capacitor/android': path.resolve(__dirname, 'utils/empty-module.js'),
+          '@codetrix-studio/capacitor-google-auth': path.resolve(__dirname, 'utils/empty-module.js'),
+          'react-native': path.resolve(__dirname, 'utils/empty-module.js'),
+          '@react-native-firebase/app': path.resolve(__dirname, 'utils/empty-module.js'),
+          '@react-native-firebase/auth': path.resolve(__dirname, 'utils/empty-module.js'),
+          'react-native-chart-kit': path.resolve(__dirname, 'utils/empty-module.js'),
+          'react-native-svg': path.resolve(__dirname, 'utils/empty-module.js'),
+          'cordova-plugin-firebasex': path.resolve(__dirname, 'utils/empty-module.js'),
+          'expo-auth-session': path.resolve(__dirname, 'utils/empty-module.js'),
           'motion/react': 'framer-motion'
         }
       },
@@ -34,9 +34,14 @@ export default defineConfig(({ mode }) => {
             return id.includes('@capacitor') || 
                    id.includes('react-native') || 
                    id.includes('cordova') ||
-                   id.includes('expo');
+                   id.includes('expo') ||
+                   id.includes('@codetrix-studio');
           }
-        }
+        },
+        // Ensure assets are built with proper paths
+        assetsInlineLimit: 0,
+        // Fix for Vercel deployment
+        target: 'es2015'
       },
       optimizeDeps: {
         exclude: [
