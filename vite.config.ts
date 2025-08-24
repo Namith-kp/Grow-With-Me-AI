@@ -23,7 +23,10 @@ export default defineConfig(({ mode }) => {
           'react-native-svg': path.resolve(__dirname, 'utils/empty-module.js'),
           'cordova-plugin-firebasex': path.resolve(__dirname, 'utils/empty-module.js'),
           'expo-auth-session': path.resolve(__dirname, 'utils/empty-module.js'),
-          'motion/react': 'framer-motion'
+          'motion/react': 'framer-motion',
+          // Fix for d3-format exponent.js issue
+          '../node_modules/d3-format/src/exponent.js': path.resolve(__dirname, 'utils/empty-module.js'),
+          'd3-format/src/exponent.js': path.resolve(__dirname, 'utils/empty-module.js')
         }
       },
       build: {

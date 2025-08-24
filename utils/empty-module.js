@@ -23,6 +23,11 @@ export const Platform = {
   select: (obj) => obj.web || obj.default || {}
 };
 
+// Handle d3-format exponent function
+export const exponent = (x) => {
+  return x === 0 ? 0 : Math.floor(Math.log(Math.abs(x)) / Math.LN10);
+};
+
 // Handle any other mobile-specific exports
 export const * = {};
 
