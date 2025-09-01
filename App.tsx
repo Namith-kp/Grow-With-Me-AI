@@ -21,14 +21,15 @@ import NegotiationsBoard from './components/NegotiationsBoard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import Messages from './components/Messages';
 import IdeasBoard from './components/IdeasBoard';
-import RequestsBoard from './components/RequestsBoard';
 import People from './components/People';
+import Profile from './components/Profile';
+import NotificationsPage from './components/NotificationsPage';
 import { ApiKeysNotice } from './components/ApiKeysNotice';
 import Header from './components/Header';
 import ChatModal from './components/ChatModal';
 import { DUMMY_USERS } from './constants';
 import firebase from 'firebase/compat/app';
-import { User, EnrichedMatch, View, AnalyticsData, UserActivity, Chat, ConnectionRequest } from './types';
+import { User, EnrichedMatch, View, AnalyticsData, UserActivity, Chat } from './types';
 import { findMatches } from './services/geminiService';
 import { firestoreService } from './services/firestoreService';
 import { analyticsService } from './services/analyticsService';
@@ -140,17 +141,51 @@ const App: React.FC = () => {
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
     const [selectedUserForChat, setSelectedUserForChat] = useState<User | null>(null);
-    const [pendingConnectionRequests, setPendingConnectionRequests] = useState<ConnectionRequest[]>([]);
-    const [sentConnectionRequests, setSentConnectionRequests] = useState<ConnectionRequest[]>([]);
     const [connections, setConnections] = useState<User[]>([]);
     const [founderEngagement, setFounderEngagement] = useState<{ totalLikes: number; totalComments: number } | null>(null);
+    const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
+    const [showPasskeyRegistration, setShowPasskeyRegistration] = useState(false);
+    const [showPasskeyVerification, setShowPasskeyVerification] = useState(false);
+    const [pendingAuthUser, setPendingAuthUser] = useState<firebase.User | null>(null);
+    const [pendingUserProfile, setPendingUserProfile] = useState<User | null>(null);
+    const [isInPasskeyFlow, setIsInPasskeyFlow] = useState(false);
+    const currentViewRef = useRef<View>(view);
+
+    // Update the ref whenever view changes
+    useEffect(() => {
+        currentViewRef.current = view;
+    }, [view]);
 
     const areKeysMissing = firebaseConfig.apiKey.startsWith('REPLACE_');
 
+    // Comprehensive function to reset all passkey states
+    const resetPasskeyStates = useCallback(() => {
+        console.log('Resetting all passkey states');
+        setIsInPasskeyFlow(false);
+        setShowPasskeyPrompt(false);
+        setShowPasskeyRegistration(false);
+        setShowPasskeyVerification(false);
+        setPendingAuthUser(null);
+        setPendingUserProfile(null);
+    }, []);
+
     const navigate = useCallback((targetView: View) => {
+        console.log('Navigation requested:', { 
+            from: view, 
+            to: targetView, 
+            isInPasskeyFlow,
+            timestamp: new Date().toISOString(),
+            stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+        });
         setError(null);
         setView(targetView);
-    }, []);
+        
+        // Safety mechanism: reset passkey flow state when user manually navigates
+        if (isInPasskeyFlow && targetView !== View.AUTH) {
+            console.log('Resetting passkey flow state due to manual navigation');
+            resetPasskeyStates();
+        }
+    }, [isInPasskeyFlow, view, resetPasskeyStates]);
 
     useEffect(() => {
         if (authUser && !authUser.isAnonymous && userProfile) {
@@ -163,8 +198,9 @@ const App: React.FC = () => {
                 [View.MESSAGES]: 'send_message',
                 [View.IDEAS]: 'view_ideas',
                 [View.PEOPLE]: 'view_profile', // Or a new action type
-                [View.REQUESTS]: 'view_ideas', // Placeholder, adjust as needed
                 [View.NEGOTIATIONS]: 'view_profile', // Or a new action type for negotiations
+                [View.PROFILE]: 'view_profile',
+                [View.NOTIFICATIONS]: 'view_profile',
             };
             
             if (actionMap[view]) {
@@ -239,6 +275,8 @@ const App: React.FC = () => {
                 connections: [],
                 role: Role.Founder,
                 location: '',
+                dateOfBirth: '',
+                gender: '',
                 skills: [],
                 interests: [],
                 lookingFor: '',
@@ -269,6 +307,12 @@ const App: React.FC = () => {
                 return;
             }
             unsubscribe = auth.onAuthStateChanged(async (user) => {
+                console.log('onAuthStateChanged triggered:', { 
+                    user: user?.uid ? 'authenticated' : 'not authenticated', 
+                    currentView: view, 
+                    isInPasskeyFlow 
+                });
+                
                 setAuthLoading(true);
                 if (user && !authConfigError) {
                     setAuthUser(user);
@@ -281,6 +325,8 @@ const App: React.FC = () => {
                             connections: [],
                             role: Role.Founder,
                             location: '',
+                            dateOfBirth: '',
+                            gender: '',
                             skills: [],
                             interests: [],
                             lookingFor: '',
@@ -297,19 +343,33 @@ const App: React.FC = () => {
                                 console.error('Error starting user session:', error);
                             }
                         }
-                        // Check if user has completed onboarding (has meaningful profile data)
-                        const hasCompletedOnboarding = profile.name && 
-                                                     profile.name.trim() !== '' && 
-                                                     profile.role && 
-                                                     profile.location && 
-                                                     profile.skills && 
-                                                     profile.skills.length > 0;
                         
-                        if (hasCompletedOnboarding) {
-                            navigate(View.DASHBOARD);
-                        } else {
-                            navigate(View.ONBOARDING);
+                        // Don't automatically navigate to dashboard - let the passkey flow handle navigation
+                        // The passkey verification will be triggered by the onAuthSuccess callback
+                        // and will handle navigation after completion
+                        
+                        // Only prevent automatic navigation if we're currently in the AUTH view and passkey flow is active
+                        // This allows users to navigate freely after they've completed the passkey flow
+                        if (currentViewRef.current === View.AUTH && isInPasskeyFlow) {
+                            // Stay on AUTH view during passkey flow
+                            return;
                         }
+                        
+                        // Only handle initial navigation for page refresh scenarios
+                        // Don't interfere with user's manual navigation between tabs
+                        if (currentViewRef.current === View.LANDING || currentViewRef.current === View.AUTH) {
+                            console.log('Handling initial navigation for:', { view: currentViewRef.current, profileRole: profile.role, profileLocation: profile.location });
+                            if (!profile.role || profile.role === Role.Founder && !profile.location) {
+                                console.log('Navigating to ONBOARDING');
+                                navigate(View.ONBOARDING);
+                            } else {
+                                console.log('Navigating to DASHBOARD');
+                                navigate(View.DASHBOARD);
+                            }
+                        } else {
+                            console.log('User already on tab, not changing view:', currentViewRef.current);
+                        }
+                        // If user is already on a different view (Dashboard, Messages, etc.), don't change it
                     } else {
                         navigate(View.ONBOARDING);
                     }
@@ -357,6 +417,7 @@ const App: React.FC = () => {
                 const credential = firebase.auth.GoogleAuthProvider.credential(result.idToken);
                 await auth.signInWithCredential(credential);
             }
+            
             // Successful login is handled by the onAuthStateChanged listener
         } catch (err: any) {
             console.error("Authentication error:", err);
@@ -451,6 +512,28 @@ const App: React.FC = () => {
             setError("Failed to complete onboarding. Please try again.");
         } finally {
             setOnboardingLoading(false);
+        }
+    };
+
+    const handleProfileUpdate = async (updatedProfile: Partial<User>) => {
+        if (!authUser || !userProfile) return;
+        setError(null);
+        try {
+            const updatedUserProfile: User = {
+                ...userProfile,
+                ...updatedProfile,
+            };
+
+            if (isGuestMode) {
+                console.log("Guest mode: Updating profile locally.");
+                setUserProfile(updatedUserProfile);
+            } else {
+                await firestoreService.updateUserProfile(authUser.uid, updatedProfile);
+                setUserProfile(updatedUserProfile);
+            }
+        } catch (err) {
+            console.error("Profile update error:", err);
+            setError("Failed to update profile. Please try again.");
         }
     };
 
@@ -569,26 +652,6 @@ const App: React.FC = () => {
     };
 
     useEffect(() => {
-        if (userProfile && !isGuestMode) {
-            const unsubIncoming = firestoreService.getPendingConnectionRequests(userProfile.id, (requests) => {
-                setPendingConnectionRequests(requests);
-            });
-
-            const unsubSent = firestoreService.getSentConnectionRequests(userProfile.id, (requests) => {
-                setSentConnectionRequests(requests);
-            });
-
-            return () => {
-                unsubIncoming();
-                unsubSent();
-            };
-        } else {
-            setPendingConnectionRequests([]);
-            setSentConnectionRequests([]);
-        }
-    }, [userProfile, isGuestMode]);
-
-    useEffect(() => {
         if (userProfile && userProfile.role === 'Founder') {
             firestoreService.getFounderIdeaEngagementAnalytics(userProfile.id).then(setFounderEngagement);
         }
@@ -612,6 +675,79 @@ const App: React.FC = () => {
         return () => window.removeEventListener('navigate-dashboard', handler);
     }, [navigate]);
 
+    const handlePasskeyComplete = (skipped: boolean = false) => {
+        if (pendingAuthUser && pendingUserProfile) {
+            setAuthUser(pendingAuthUser);
+            setUserProfile(pendingUserProfile);
+            
+            // Check if user has completed onboarding
+            const hasCompletedOnboarding = pendingUserProfile.name && 
+                                         pendingUserProfile.name.trim() !== '' && 
+                                         pendingUserProfile.role && 
+                                         pendingUserProfile.location && 
+                                         pendingUserProfile.skills && 
+                                         pendingUserProfile.skills.length > 0;
+            
+            if (hasCompletedOnboarding) {
+                navigate(View.DASHBOARD);
+            } else {
+                navigate(View.ONBOARDING);
+            }
+            
+            // Reset all passkey states
+            resetPasskeyStates();
+        }
+    };
+
+    const handlePasskeyVerificationSuccess = () => {
+        if (pendingAuthUser && pendingUserProfile) {
+            setAuthUser(pendingAuthUser);
+            setUserProfile(pendingUserProfile);
+            
+            // Check if user has completed onboarding
+            const hasCompletedOnboarding = pendingUserProfile.name && 
+                                         pendingUserProfile.name.trim() !== '' && 
+                                         pendingUserProfile.role && 
+                                         pendingUserProfile.location && 
+                                         pendingUserProfile.skills && 
+                                         pendingUserProfile.skills.length > 0;
+            
+            if (hasCompletedOnboarding) {
+                navigate(View.DASHBOARD);
+            } else {
+                navigate(View.ONBOARDING);
+            }
+            
+            // Reset all passkey states
+            resetPasskeyStates();
+        }
+    };
+
+    const handlePasskeySkip = () => {
+        handlePasskeyComplete(true);
+    };
+
+    const checkUserHasPasskeys = async (uid: string): Promise<boolean> => {
+        try {
+            const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE_URL || '/api';
+            const response = await fetch(`${functionsBase}/webauthn/login/begin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                // If allowCredentials exists and has items, user has passkeys
+                return data.allowCredentials && data.allowCredentials.length > 0;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error checking passkeys:', error);
+            return false;
+        }
+    };
+
     const renderContent = () => {
         if (isAuthLoading && !areKeysMissing && !authConfigError) {
             return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div></div>;
@@ -622,7 +758,28 @@ const App: React.FC = () => {
                 // return <LandingPageLightRays onGetStarted={() => navigate(View.AUTH)} authUser={authUser} userProfile={userProfile} />;
                 return <LandingPageLightRays/>;
             case View.AUTH:
-                return <AuthComponent onGoogleLogin={handleLogin} onGuestLogin={handleContinueAsGuest} error={error} authUser={authUser} />;
+                return <AuthComponent error={error} onAuthSuccess={async (user) => {
+                    // After successful authentication, check for passkeys and show appropriate prompt
+                    if (user) {
+                        const hasPasskeys = await checkUserHasPasskeys(user.uid);
+                        const profile = await firestoreService.getUserProfile(user.uid);
+                        
+                        // Set passkey flow state to prevent background navigation
+                        setIsInPasskeyFlow(true);
+                        
+                        if (hasPasskeys) {
+                            // User has passkeys - require 2FA verification
+                            setPendingAuthUser(user);
+                            setPendingUserProfile(profile);
+                            setShowPasskeyVerification(true);
+                        } else {
+                            // No passkeys yet, show passkey registration prompt
+                            setPendingAuthUser(user);
+                            setPendingUserProfile(profile);
+                            setShowPasskeyPrompt(true);
+                        }
+                    }
+                }} />;
             case View.ONBOARDING:
                 return <Onboarding onOnboardingComplete={handleOnboardingComplete} userProfile={userProfile} loading={onboardingLoading} error={error} />;
             case View.DASHBOARD:
@@ -702,11 +859,6 @@ const App: React.FC = () => {
                         setView(View.NEGOTIATIONS);
                     }}
                 />;
-            case View.REQUESTS:
-                return <RequestsBoard 
-                            incomingRequests={pendingConnectionRequests} 
-                            sentRequests={sentConnectionRequests}
-                        />;
             case View.PEOPLE:
                 return <People 
                             currentUser={userProfile}
@@ -714,11 +866,39 @@ const App: React.FC = () => {
                             onMessage={handleMessageUser}
                             onRemoveConnection={handleRemoveConnection}
                         />;
+            case View.PROFILE:
+                if (!userProfile) return null;
+                return <Profile 
+                    userProfile={userProfile}
+                    onUpdateProfile={handleProfileUpdate}
+                    onBack={() => navigate(View.DASHBOARD)}
+                    loading={false}
+                    error={error}
+                />;
+            case View.NOTIFICATIONS:
+                if (!userProfile) return null;
+                return <NotificationsPage 
+                    currentUser={userProfile}
+                    onNavigateToView={navigate}
+                    onBack={() => navigate(View.DASHBOARD)}
+                />;
             default:
                 if (!userProfile) return null;
                 return <Dashboard user={userProfile} matches={filteredMatches} isLoading={isLoading} error={error} onFindMatches={handleFindMatches} searchQuery={searchQuery} setSearchQuery={setSearchQuery} hasActiveSearch={matches.length > 0} onMessage={handleMessageUser} />;
         }
     };
+
+    // Safety timeout to reset passkey flow state if something goes wrong
+    useEffect(() => {
+        if (isInPasskeyFlow) {
+            const timeout = setTimeout(() => {
+                console.warn('Passkey flow timeout - resetting state');
+                resetPasskeyStates();
+            }, 30000); // 30 seconds timeout
+            
+            return () => clearTimeout(timeout);
+        }
+    }, [isInPasskeyFlow, resetPasskeyStates]);
 
     return (
         <CacheProvider>
@@ -731,14 +911,203 @@ const App: React.FC = () => {
                         userProfile={userProfile} 
                         onLogin={handleLogin} 
                         onLogout={handleLogout} 
-                        pendingRequestCount={pendingConnectionRequests.length}
                         isMobileChatOpen={isMobileChatOpen}
                         isMobileNegotiationOpen={isMobileNegotiationOpen}
                     />
                 )}
-                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
+                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS || view === View.PROFILE || view === View.NOTIFICATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
                     {renderContent()}
                 </main>
+                
+                {/* Passkey Registration Prompt */}
+                {showPasskeyPrompt && pendingAuthUser && pendingUserProfile && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <h3 className="text-xl font-bold text-white mb-2">
+                                    Welcome, {pendingUserProfile.name || pendingAuthUser.email}!
+                                </h3>
+                                <p className="text-slate-400 text-sm">
+                                    Set up a passkey for faster, more secure sign-ins on this device and others.
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-emerald-900/20 border border-emerald-700/30 text-emerald-300 p-3 rounded-lg text-sm">
+                                    <strong>Account:</strong> {pendingAuthUser.email}<br/>
+                                    <strong>Provider:</strong> {pendingAuthUser.providerData[0]?.providerId || 'phone'}
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        setShowPasskeyPrompt(false);
+                                        setShowPasskeyRegistration(true);
+                                    }}
+                                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors font-medium"
+                                >
+                                    Set up passkey
+                                </button>
+                                
+                                <button
+                                    onClick={handlePasskeySkip}
+                                    className="w-full px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+                                >
+                                    Skip for now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Passkey Registration UI */}
+                {showPasskeyRegistration && pendingAuthUser && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <h3 className="text-xl font-bold text-white mb-2">Register Passkey</h3>
+                                <p className="text-slate-400 text-sm">
+                                    Follow your device's prompts to create a secure passkey.
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-emerald-900/20 border border-emerald-700/30 text-emerald-300 p-3 rounded-lg text-sm">
+                                    <strong>Account:</strong> {pendingAuthUser.email}<br/>
+                                    <strong>Provider:</strong> {pendingAuthUser.providerData[0]?.providerId || 'phone'}
+                                </div>
+                                
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            // Import the passkey functions dynamically
+                                            const { startRegistration } = await import('@simplewebauthn/browser');
+                                            const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE_URL || '/api';
+                                            
+                                            // Start passkey registration
+                                            const uid = pendingAuthUser.uid;
+                                            const userEmail = pendingAuthUser.email || '';
+                                            const userProvider = pendingAuthUser.providerData[0]?.providerId || 'unknown';
+                                            
+                                            const begin = await fetch(`${functionsBase}/webauthn/register/begin`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ uid })
+                                            }).then(r => r.json());
+                                            
+                                            const attResp = await startRegistration(begin);
+                                            
+                                            const finish = await fetch(`${functionsBase}/webauthn/register/finish`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ 
+                                                    uid, 
+                                                    response: attResp,
+                                                    userEmail,
+                                                    userProvider
+                                                })
+                                            }).then(r => r.json());
+                                            
+                                            if (finish?.verified) {
+                                                // Passkey registered successfully
+                                                setShowPasskeyRegistration(false);
+                                                handlePasskeyComplete(false);
+                                            } else {
+                                                throw new Error('Passkey registration failed');
+                                            }
+                                        } catch (error) {
+                                            console.error('Passkey registration error:', error);
+                                            alert('Passkey registration failed. Please try again or skip for now.');
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors font-medium"
+                                >
+                                    Start Registration
+                                </button>
+                                
+                                <button
+                                    onClick={() => {
+                                        setShowPasskeyRegistration(false);
+                                        handlePasskeyComplete(false);
+                                    }}
+                                    className="w-full px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Passkey Verification Prompt */}
+                {showPasskeyVerification && pendingAuthUser && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <h3 className="text-xl font-bold text-white mb-2">
+                                    Two-Factor Authentication Required
+                                </h3>
+                                <p className="text-slate-400 text-sm">
+                                    Please verify your identity using your passkey.
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-emerald-900/20 border border-emerald-700/30 text-emerald-300 p-3 rounded-lg text-sm">
+                                    <strong>Account:</strong> {pendingAuthUser.email}<br/>
+                                    <strong>Provider:</strong> {pendingAuthUser.providerData[0]?.providerId || 'phone'}
+                                </div>
+                                
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            // Import the passkey functions dynamically
+                                            const { startAuthentication } = await import('@simplewebauthn/browser');
+                                            const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE_URL || '/api';
+                                            
+                                            // Start passkey authentication
+                                            const uid = pendingAuthUser.uid;
+                                            const userEmail = pendingAuthUser.email || '';
+                                            const userProvider = pendingAuthUser.providerData[0]?.providerId || 'unknown';
+                                            
+                                            const begin = await fetch(`${functionsBase}/webauthn/login/begin`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ uid })
+                                            }).then(r => r.json());
+                                            
+                                            const attResp = await startAuthentication(begin);
+                                            
+                                            const finish = await fetch(`${functionsBase}/webauthn/login/finish`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ 
+                                                    uid, 
+                                                    response: attResp,
+                                                    userEmail,
+                                                    userProvider
+                                                })
+                                            }).then(r => r.json());
+                                            
+                                            if (finish?.verified) {
+                                                // Passkey verified successfully
+                                                setShowPasskeyVerification(false);
+                                                handlePasskeyVerificationSuccess();
+                                            } else {
+                                                throw new Error('Passkey verification failed');
+                                            }
+                                        } catch (error) {
+                                            console.error('Passkey verification error:', error);
+                                            alert('Passkey verification failed. Please try again.');
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors font-medium"
+                                >
+                                    Verify Passkey
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 {/* Fallback Notification */}
                 {showFallbackNotification && (
@@ -752,6 +1121,7 @@ const App: React.FC = () => {
                 )}
                 
                 {/* ChatModal removed; chat will be rendered inline in Messages */}
+                
             </div>
         </CacheProvider>
     );

@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { User, Chat, Idea, IdeaJoinRequest, ConnectionRequest, Comment, Negotiation, Offer } from '../types';
+import { User, Chat, Idea, IdeaJoinRequest, ConnectionRequest, Comment, Negotiation, Offer, Notification, NotificationType } from '../types';
 import firebase from 'firebase/compat/app';
 
 type UserCreationData = Omit<User, 'id'>;
@@ -7,14 +7,39 @@ type UserCreationData = Omit<User, 'id'>;
 export const firestoreService = {
     /**
      * Paginated fetch for ideas. Returns { ideas, lastDoc, hasMore }
+     * Filters ideas based on visibility: public ideas are shown to everyone,
+     * private ideas are only shown to connected users
      */
-    getIdeasPaginated: async (startAfterDoc?: any, pageSize: number = 20): Promise<{ ideas: Idea[], lastDoc: any, hasMore: boolean }> => {
+    getIdeasPaginated: async (startAfterDoc?: any, pageSize: number = 20, currentUserId?: string): Promise<{ ideas: Idea[], lastDoc: any, hasMore: boolean }> => {
         let query = db.collection('ideas').orderBy('status').limit(pageSize);
         if (startAfterDoc) {
             query = query.startAfter(startAfterDoc);
         }
         const snapshot = await query.get();
-        const ideas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        let ideas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        // Filter ideas based on visibility if user is logged in
+        if (currentUserId) {
+            // Get user's connections to check visibility
+            const userProfile = await firestoreService.getUserProfile(currentUserId);
+            if (userProfile) {
+                ideas = ideas.filter(idea => {
+                    // Always show public ideas
+                    if (idea.visibility === 'public') {
+                        return true;
+                    }
+                    // For private ideas, only show if user is connected to the founder
+                    if (idea.visibility === 'private') {
+                        return userProfile.connections.includes(idea.founderId) || idea.founderId === currentUserId;
+                    }
+                    return true;
+                });
+            }
+        } else {
+            // If no user logged in, only show public ideas
+            ideas = ideas.filter(idea => idea.visibility === 'public');
+        }
+        
         const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
         // Check if there are more docs
         const hasMore = snapshot.docs.length === pageSize;
@@ -32,6 +57,11 @@ export const firestoreService = {
     createUserProfile: async (uid: string, data: UserCreationData): Promise<void> => {
         const userRef = db.collection("users").doc(uid);
         await userRef.set(data);
+    },
+
+    updateUserProfile: async (uid: string, data: Partial<User>): Promise<void> => {
+        const userRef = db.collection("users").doc(uid);
+        await userRef.update(data);
     },
 
     getUsers: async (exceptUid?: string): Promise<User[]> => {
@@ -103,6 +133,240 @@ export const firestoreService = {
         }
     },
 
+    // Notification functions
+    createNotification: async (notification: Omit<Notification, 'id' | 'createdAt'>): Promise<string> => {
+        const notificationRef = db.collection('notifications').doc();
+        const notificationData = {
+            ...notification,
+            id: notificationRef.id,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await notificationRef.set(notificationData);
+        return notificationRef.id;
+    },
+
+    getNotifications: async (userId: string, limit: number = 50): Promise<Notification[]> => {
+        const notificationsRef = db.collection('notifications')
+            .where('userId', '==', userId)
+            .orderBy('timestamp', 'desc')
+            .limit(limit);
+        
+        const snapshot = await notificationsRef.get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate() || new Date(),
+            createdAt: doc.data().createdAt?.toDate() || new Date()
+        } as Notification));
+    },
+
+    getNotificationsRealtime: (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
+        const notificationsRef = db.collection('notifications')
+            .where('userId', '==', userId)
+            .orderBy('timestamp', 'desc');
+        
+        const unsubscribe = notificationsRef.onSnapshot(snapshot => {
+            const notifications = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    timestamp: data.timestamp?.toDate() || new Date(),
+                    createdAt: data.createdAt?.toDate() || new Date()
+                } as Notification;
+            });
+            callback(notifications);
+        });
+        
+        return unsubscribe;
+    },
+
+    getAllNotificationsRealtime: (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
+        console.log('🔍 Firestore: Setting up getAllNotificationsRealtime for user:', userId);
+        
+        // First try with orderBy, if it fails, fall back to without orderBy
+        const notificationsRef = db.collection('notifications')
+            .where('userId', '==', userId);
+        
+        const unsubscribe = notificationsRef.onSnapshot(
+            (snapshot) => {
+                console.log('📨 Firestore: Snapshot received, docs count:', snapshot.docs.length);
+                console.log('🔍 Firestore: Snapshot metadata:', snapshot.metadata);
+                
+                const notifications = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    console.log('📄 Firestore: Document data:', doc.id, data);
+                    
+                    const notification = {
+                        id: doc.id,
+                        ...data,
+                        timestamp: data.timestamp?.toDate() || new Date(),
+                        createdAt: data.createdAt?.toDate() || new Date()
+                    } as Notification;
+                    
+                    console.log('✅ Firestore: Processed notification:', notification);
+                    return notification;
+                });
+                
+                // Sort by timestamp descending after processing
+                notifications.sort((a, b) => {
+                    const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+                    const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+                    return timeB - timeA;
+                });
+                
+                console.log('📊 Firestore: Total processed notifications:', notifications.length);
+                callback(notifications);
+            },
+            (error) => {
+                console.error('❌ Firestore: Error in getAllNotificationsRealtime:', error);
+                console.error('❌ Firestore: Error code:', error.code);
+                console.error('❌ Firestore: Error message:', error.message);
+                
+                // Check if it's a permission error
+                if (error.code === 'permission-denied') {
+                    console.error('❌ Firestore: Permission denied - user may not have access to notifications collection');
+                } else if (error.code === 'unauthenticated') {
+                    console.error('❌ Firestore: User is not authenticated');
+                } else if (error.code === 'not-found') {
+                    console.error('❌ Firestore: Collection not found');
+                }
+                
+                // Call callback with empty array on error, but don't crash
+                callback([]);
+            }
+        );
+        
+        return unsubscribe;
+    },
+
+    markNotificationAsRead: async (notificationId: string): Promise<void> => {
+        const notificationRef = db.collection('notifications').doc(notificationId);
+        await notificationRef.update({
+            isRead: true
+        });
+    },
+
+    markAllNotificationsAsRead: async (userId: string): Promise<void> => {
+        const notificationsRef = db.collection('notifications').where('userId', '==', userId).where('isRead', '==', false);
+        const snapshot = await notificationsRef.get();
+        
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { isRead: true });
+        });
+        
+        await batch.commit();
+    },
+
+    updateNotificationData: async (notificationId: string, data: any): Promise<void> => {
+        const notificationRef = db.collection('notifications').doc(notificationId);
+        const doc = await notificationRef.get();
+        if (doc.exists) {
+            const currentData = doc.data()?.data || {};
+            const updatedData = { ...currentData, ...data };
+            await notificationRef.update({
+                data: updatedData
+            });
+        }
+    },
+
+    getUnreadNotificationCount: async (userId: string): Promise<number> => {
+        const notificationsRef = db.collection('notifications')
+            .where('userId', '==', userId)
+            .where('isRead', '==', false);
+        
+        const snapshot = await notificationsRef.get();
+        return snapshot.size;
+    },
+
+    getUnreadNotificationCountRealtime: (userId: string, callback: (count: number) => void) => {
+        console.log('🔍 Firestore: Setting up getUnreadNotificationCountRealtime for user:', userId);
+        
+        const notificationsRef = db.collection('notifications')
+            .where('userId', '==', userId)
+            .where('isRead', '==', false);
+        
+        return notificationsRef.onSnapshot(
+            (snapshot) => {
+                console.log('🔢 Firestore: Unread count snapshot received, count:', snapshot.size);
+                console.log('🔍 Firestore: Unread snapshot metadata:', snapshot.metadata);
+                callback(snapshot.size);
+            },
+            (error) => {
+                console.error('❌ Firestore: Error in getUnreadNotificationCountRealtime:', error);
+                console.error('❌ Firestore: Error code:', error.code);
+                console.error('❌ Firestore: Error message:', error.message);
+                
+                // Check if it's a permission error
+                if (error.code === 'permission-denied') {
+                    console.error('❌ Firestore: Permission denied - user may not have access to notifications collection');
+                } else if (error.code === 'unauthenticated') {
+                    console.error('❌ Firestore: User is not authenticated');
+                }
+                
+                // Call callback with 0 on error, but don't crash
+                callback(0);
+            }
+        );
+    },
+
+    // Helper function to create connection request notification
+    createConnectionRequestNotification: async (fromUserId: string, toUserId: string, fromUserName: string, connectionRequestId: string): Promise<void> => {
+        const toUser = await firestoreService.getUserProfile(toUserId);
+        if (!toUser) return;
+
+        await firestoreService.createNotification({
+            userId: toUserId,
+            type: NotificationType.CONNECTION_REQUEST,
+            title: 'New Connection Request',
+            message: `${fromUserName} wants to connect with you`,
+            data: {
+                senderId: fromUserId,
+                senderName: fromUserName,
+                connectionRequestId: connectionRequestId
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+    },
+
+    // Helper function to create message notification
+    createMessageNotification: async (fromUserId: string, toUserId: string, fromUserName: string, messageText: string): Promise<void> => {
+        const toUser = await firestoreService.getUserProfile(toUserId);
+        if (!toUser) return;
+
+        await firestoreService.createNotification({
+            userId: toUserId,
+            type: NotificationType.MESSAGE,
+            title: `New message from ${fromUserName}`,
+            message: messageText.length > 50 ? `${messageText.substring(0, 50)}...` : messageText,
+            data: {
+                senderId: fromUserId,
+                senderName: fromUserName,
+                chatId: firestoreService.getChatId(fromUserId, toUserId)
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+    },
+
+    // Helper function to create negotiation notification
+    createNegotiationNotification: async (userId: string, negotiationId: string, title: string, message: string): Promise<void> => {
+        await firestoreService.createNotification({
+            userId,
+            type: NotificationType.NEGOTIATION_UPDATE,
+            title,
+            message,
+            data: {
+                negotiationId
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+    },
+
     getChatId: (uid1: string, uid2: string): string => {
         return [uid1, uid2].sort().join('_');
     },
@@ -116,16 +380,124 @@ export const firestoreService = {
         await db.collection('ideas').add(ideaWithExtras);
     },
 
-    getIdeas: async (): Promise<Idea[]> => {
+    getIdeas: async (currentUserId?: string): Promise<Idea[]> => {
         const ideasRef = db.collection('ideas').orderBy('status').limit(20);
         const snapshot = await ideasRef.get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        let ideas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        // Filter ideas based on visibility if user is logged in
+        if (currentUserId) {
+            // Get user's connections to check visibility
+            const userProfile = await firestoreService.getUserProfile(currentUserId);
+            if (userProfile) {
+                ideas = ideas.filter(idea => {
+                    // Always show public ideas
+                    if (idea.visibility === 'public') {
+                        return true;
+                    }
+                    // For private ideas, only show if user is connected to the founder
+                    if (idea.visibility === 'private') {
+                        return userProfile.connections.includes(idea.founderId) || idea.founderId === currentUserId;
+                    }
+                    return true;
+                });
+            }
+        } else {
+            // If no user logged in, only show public ideas
+            ideas = ideas.filter(idea => idea.visibility === 'public');
+        }
+        
+        return ideas;
     },
 
-    getIdeasByFounder: async (founderId: string): Promise<Idea[]> => {
+    getIdeasByFounder: async (founderId: string, currentUserId?: string): Promise<Idea[]> => {
         const ideasRef = db.collection('ideas').where('founderId', '==', founderId);
         const snapshot = await ideasRef.get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        let ideas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        // Filter ideas based on visibility if user is logged in
+        if (currentUserId) {
+            // Get user's connections to check visibility
+            const userProfile = await firestoreService.getUserProfile(currentUserId);
+            if (userProfile) {
+                ideas = ideas.filter(idea => {
+                    // Always show public ideas
+                    if (idea.visibility === 'public') {
+                        return true;
+                    }
+                    // For private ideas, only show if user is connected to the founder
+                    if (idea.visibility === 'private') {
+                        return userProfile.connections.includes(idea.founderId) || idea.founderId === currentUserId;
+                    }
+                    return true;
+                });
+            }
+        } else {
+            // If no user logged in, only show public ideas
+            ideas = ideas.filter(idea => idea.visibility === 'public');
+        }
+        
+        return ideas;
+    },
+
+    /**
+     * Get all ideas visible to a specific user
+     * Includes public ideas and private ideas from connected users
+     */
+    getVisibleIdeasForUser: async (userId: string): Promise<Idea[]> => {
+        const userProfile = await firestoreService.getUserProfile(userId);
+        if (!userProfile) {
+            return [];
+        }
+
+        // Get all ideas
+        const ideasRef = db.collection('ideas').orderBy('status');
+        const snapshot = await ideasRef.get();
+        const allIdeas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        // Filter based on visibility
+        return allIdeas.filter(idea => {
+            // Always show public ideas
+            if (idea.visibility === 'public') {
+                return true;
+            }
+            // For private ideas, only show if user is connected to the founder or is the founder
+            if (idea.visibility === 'private') {
+                return userProfile.connections.includes(idea.founderId) || idea.founderId === userId;
+            }
+            return true;
+        });
+    },
+
+    /**
+     * Get ideas for a user's profile page
+     * Shows user's own ideas and ideas from connected users
+     */
+    getIdeasForUserProfile: async (userId: string): Promise<{ ownIdeas: Idea[], connectedIdeas: Idea[] }> => {
+        const userProfile = await firestoreService.getUserProfile(userId);
+        if (!userProfile) {
+            return { ownIdeas: [], connectedIdeas: [] };
+        }
+
+        // Get all ideas
+        const ideasRef = db.collection('ideas').orderBy('status');
+        const snapshot = await ideasRef.get();
+        const allIdeas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        const ownIdeas: Idea[] = [];
+        const connectedIdeas: Idea[] = [];
+        
+        allIdeas.forEach(idea => {
+            if (idea.founderId === userId) {
+                // User's own ideas
+                ownIdeas.push(idea);
+            } else if (idea.visibility === 'public' || userProfile.connections.includes(idea.founderId)) {
+                // Public ideas or ideas from connected users
+                connectedIdeas.push(idea);
+            }
+        });
+        
+        return { ownIdeas, connectedIdeas };
     },
 
     joinIdea: async (ideaId: string, userId: string): Promise<void> => {
@@ -231,6 +603,9 @@ export const firestoreService = {
         await fromUserRef.update({
             pendingConnections: firebase.firestore.FieldValue.arrayUnion(toUserId)
         });
+
+        // Create notification for the recipient
+        await firestoreService.createConnectionRequestNotification(fromUser.id, toUserId, fromUser.name, requestId);
     },
 
     getPendingConnectionRequests: (userId: string, callback: (requests: ConnectionRequest[]) => void): (() => void) => {
@@ -376,12 +751,23 @@ export const firestoreService = {
             investorName: investor.name,
             investorAvatar: investor.avatarUrl,
             founderId: idea.founderId,
+            founderName: idea.founderName,
             status: 'pending',
             timestamp: new Date(),
             offers: [],
+            ideaInvestmentDetails: idea.investmentDetails,
         };
 
         await negotiationRef.set(negotiation);
+
+        // Create notification for the founder
+        await firestoreService.createNegotiationNotification(
+            idea.founderId,
+            negotiationId,
+            'New Negotiation Request',
+            `${investor.name} wants to negotiate for your idea: ${idea.title}`
+        );
+
         return negotiationId;
     },
 
@@ -429,12 +815,64 @@ export const firestoreService = {
 
     updateNegotiationStatus: async (negotiationId: string, status: Negotiation['status'], finalInvestment?: number, finalEquity?: number): Promise<void> => {
         const negotiationRef = db.collection('negotiations').doc(negotiationId);
+        
+        // Get the negotiation details first
+        const negotiationDoc = await negotiationRef.get();
+        if (!negotiationDoc.exists) {
+            throw new Error("Negotiation not found");
+        }
+        
+        const negotiation = negotiationDoc.data() as Negotiation;
+        
         const updateData: any = { status };
         if (status === 'accepted' && typeof finalInvestment === 'number' && typeof finalEquity === 'number') {
             updateData.finalInvestment = finalInvestment;
             updateData.finalEquity = finalEquity;
         }
+        
+        // If founder name is missing, try to fetch it from the idea
+        if (!negotiation.founderName && negotiation.ideaId) {
+            try {
+                const ideaDoc = await db.collection('ideas').doc(negotiation.ideaId).get();
+                if (ideaDoc.exists) {
+                    const ideaData = ideaDoc.data();
+                    if (ideaData?.founderName) {
+                        updateData.founderName = ideaData.founderName;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching founder name for negotiation update:', error);
+            }
+        }
+        
         await negotiationRef.update(updateData);
+
+        // Create notifications for status changes
+        if (status === 'accepted') {
+            // Notify both parties about the accepted deal
+            await firestoreService.createNegotiationNotification(
+                negotiation.founderId,
+                negotiationId,
+                'Deal Accepted! 🎉',
+                `Your negotiation for "${negotiation.ideaTitle}" has been accepted!`
+            );
+            
+            await firestoreService.createNegotiationNotification(
+                negotiation.investorId,
+                negotiationId,
+                'Deal Accepted! 🎉',
+                `Your negotiation for "${negotiation.ideaTitle}" has been accepted!`
+            );
+        } else if (status === 'rejected') {
+            // Notify the other party about the rejection
+            const recipientId = negotiation.founderId; // For now, just notify founder
+            await firestoreService.createNegotiationNotification(
+                recipientId,
+                negotiationId,
+                'Negotiation Update',
+                `The negotiation for "${negotiation.ideaTitle}" has been ${status}.`
+            );
+        }
     },
     getTotalInvestedAmountForIdeas: async (founderId: string): Promise<number> => {
         // Get all accepted negotiations for this founder's ideas
@@ -451,10 +889,31 @@ export const firestoreService = {
 
     addOfferToNegotiation: async (negotiationId: string, offer: Offer): Promise<void> => {
         const negotiationRef = db.collection('negotiations').doc(negotiationId);
+        
+        // Get the negotiation details first
+        const negotiationDoc = await negotiationRef.get();
+        if (!negotiationDoc.exists) {
+            throw new Error("Negotiation not found");
+        }
+        
+        const negotiation = negotiationDoc.data() as Negotiation;
+        
         await negotiationRef.update({
             offers: firebase.firestore.FieldValue.arrayUnion(offer),
             status: 'active' // Making an offer automatically makes the negotiation active
         });
+
+        // Create notification for the other party
+        const recipientId = offer.by === 'founder' ? negotiation.investorId : negotiation.founderId;
+        const senderName = offer.by === 'founder' ? 'Founder' : negotiation.investorName;
+        const offerType = offer.by === 'founder' ? 'investment offer' : 'equity offer';
+        
+        await firestoreService.createNegotiationNotification(
+            recipientId,
+            negotiationId,
+            'New Offer Received',
+            `${senderName} made a new ${offerType} for: ${negotiation.ideaTitle}`
+        );
     },
 
     getAcceptedInvestorCountForIdeas: async (): Promise<Record<string, number>> => {
@@ -514,10 +973,8 @@ export const firestoreService = {
         // Listen to current user's connections changes
         const currentUserRef = db.collection('users').doc(currentUserId);
         const unsubCurrentUser = currentUserRef.onSnapshot(snapshot => {
-            console.log(`FirestoreService: Current user ${currentUserId} connections changed:`, snapshot.data()?.connections);
             const userData = snapshot.data();
             if (userData && userData.connections && userData.connections.includes(otherUserId)) {
-                console.log(`FirestoreService: Users are now connected`);
                 callback({ isConnected: true, isPending: false });
                 return;
             }
@@ -529,14 +986,11 @@ export const firestoreService = {
                 if (doc.exists) {
                     const requestData = doc.data();
                     if (requestData && requestData.status === 'pending' && requestData.fromUserId === currentUserId) {
-                        console.log(`FirestoreService: Request is pending`);
                         callback({ isConnected: false, isPending: true });
                     } else {
-                        console.log(`FirestoreService: Request is not pending`);
                         callback({ isConnected: false, isPending: false });
                     }
                 } else {
-                    console.log(`FirestoreService: No request exists`);
                     callback({ isConnected: false, isPending: false });
                 }
             });
@@ -546,21 +1000,16 @@ export const firestoreService = {
         const requestId = [currentUserId, otherUserId].sort().join('_');
         const requestRef = db.collection('connectionRequests').doc(requestId);
         const unsubRequest = requestRef.onSnapshot(snapshot => {
-            console.log(`FirestoreService: Connection request ${requestId} changed:`, snapshot.data());
             if (snapshot.exists) {
                 const requestData = snapshot.data();
                 if (requestData && requestData.status === 'pending' && requestData.fromUserId === currentUserId) {
-                    console.log(`FirestoreService: Request is pending from current user`);
                     callback({ isConnected: false, isPending: true });
                 } else if (requestData && requestData.status === 'approved') {
-                    console.log(`FirestoreService: Request was approved`);
                     callback({ isConnected: true, isPending: false });
                 } else {
-                    console.log(`FirestoreService: Request has other status:`, requestData?.status);
                     callback({ isConnected: false, isPending: false });
                 }
             } else {
-                console.log(`FirestoreService: Request document deleted`);
                 callback({ isConnected: false, isPending: false });
             }
         });
@@ -568,10 +1017,8 @@ export const firestoreService = {
         // Also listen to other user's connections changes (in case they accept/reject)
         const otherUserRef = db.collection('users').doc(otherUserId);
         const unsubOtherUser = otherUserRef.onSnapshot(snapshot => {
-            console.log(`FirestoreService: Other user ${otherUserId} connections changed:`, snapshot.data()?.connections);
             const userData = snapshot.data();
             if (userData && userData.connections && userData.connections.includes(currentUserId)) {
-                console.log(`FirestoreService: Other user now has current user in connections`);
                 callback({ isConnected: true, isPending: false });
             }
         });
@@ -581,5 +1028,149 @@ export const firestoreService = {
         return () => {
             unsubscribers.forEach(unsub => unsub());
         };
+    },
+
+    /**
+     * Get ideas by a specific founder that are visible to the current user
+     */
+    getIdeasByFounderForUser: async (founderId: string, currentUserId: string): Promise<Idea[]> => {
+        const currentUserProfile = await firestoreService.getUserProfile(currentUserId);
+        if (!currentUserProfile) {
+            return [];
+        }
+
+        // Get all ideas by the founder
+        const ideasRef = db.collection('ideas').where('founderId', '==', founderId);
+        const snapshot = await ideasRef.get();
+        const founderIdeas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        // Filter based on visibility
+        return founderIdeas.filter(idea => {
+            // Always show public ideas
+            if (idea.visibility === 'public') {
+                return true;
+            }
+            // For private ideas, only show if current user is connected to the founder or is the founder
+            if (idea.visibility === 'private') {
+                return currentUserProfile.connections.includes(founderId) || founderId === currentUserId;
+            }
+            return true;
+        });
+    },
+
+    /**
+     * Get all ideas by a specific founder (for the founder's own view)
+     * Returns ALL ideas by the founder, regardless of visibility
+     */
+    getOwnIdeasByFounder: async (founderId: string): Promise<Idea[]> => {
+        console.log('🔍 getOwnIdeasByFounder called for founderId:', founderId);
+        const ideasRef = db.collection('ideas').where('founderId', '==', founderId);
+        const snapshot = await ideasRef.get();
+        const ideas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        console.log('📋 getOwnIdeasByFounder found ideas:', ideas);
+        return ideas;
+    },
+
+    /**
+     * Get ideas for the current user's dashboard
+     * Shows user's own ideas and ideas they can see from others
+     */
+    getIdeasForDashboard: async (userId: string): Promise<{ ownIdeas: Idea[], visibleIdeas: Idea[] }> => {
+        const userProfile = await firestoreService.getUserProfile(userId);
+        if (!userProfile) {
+            return { ownIdeas: [], visibleIdeas: [] };
+        }
+
+        // Get all ideas
+        const ideasRef = db.collection('ideas').orderBy('status');
+        const snapshot = await ideasRef.get();
+        const allIdeas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        const ownIdeas: Idea[] = [];
+        const visibleIdeas: Idea[] = [];
+        
+        allIdeas.forEach(idea => {
+            if (idea.founderId === userId) {
+                // User's own ideas
+                ownIdeas.push(idea);
+            } else if (idea.visibility === 'public' || userProfile.connections.includes(idea.founderId)) {
+                // Public ideas or ideas from connected users
+                visibleIdeas.push(idea);
+            }
+        });
+        
+        return { ownIdeas, visibleIdeas };
+    },
+
+    /**
+     * Get ideas for the current user's profile page
+     * Shows user's own ideas and ideas from connected users
+     */
+    getIdeasForProfile: async (userId: string): Promise<{ ownIdeas: Idea[], connectedIdeas: Idea[] }> => {
+        const userProfile = await firestoreService.getUserProfile(userId);
+        if (!userProfile) {
+            return { ownIdeas: [], connectedIdeas: [] };
+        }
+
+        // Get all ideas
+        const ideasRef = db.collection('ideas').orderBy('status');
+        const snapshot = await ideasRef.get();
+        const allIdeas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+        
+        const ownIdeas: Idea[] = [];
+        const connectedIdeas: Idea[] = [];
+        
+        allIdeas.forEach(idea => {
+            if (idea.founderId === userId) {
+                // User's own ideas
+                ownIdeas.push(idea);
+            } else if (idea.visibility === 'public' || userProfile.connections.includes(idea.founderId)) {
+                // Public ideas or ideas from connected users
+                connectedIdeas.push(idea);
+            }
+        });
+        
+        return { ownIdeas, connectedIdeas };
+    },
+
+    // Utility function to update existing negotiations with missing founder names
+    updateNegotiationsWithFounderNames: async (): Promise<void> => {
+        try {
+            const negotiationsRef = db.collection('negotiations');
+            const snapshot = await negotiationsRef.get();
+            
+            const batch = db.batch();
+            let updateCount = 0;
+            
+            for (const doc of snapshot.docs) {
+                const negotiation = doc.data() as Negotiation;
+                
+                // If founder name is missing, fetch it from the idea
+                if (!negotiation.founderName && negotiation.ideaId) {
+                    try {
+                        const ideaDoc = await db.collection('ideas').doc(negotiation.ideaId).get();
+                        if (ideaDoc.exists) {
+                            const ideaData = ideaDoc.data();
+                            if (ideaData?.founderName) {
+                                batch.update(doc.ref, { founderName: ideaData.founderName });
+                                updateCount++;
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching founder name for negotiation ${doc.id}:`, error);
+                    }
+                }
+            }
+            
+            if (updateCount > 0) {
+                await batch.commit();
+                console.log(`Updated ${updateCount} negotiations with founder names`);
+            } else {
+                console.log('No negotiations needed founder name updates');
+            }
+        } catch (error) {
+            console.error('Error updating negotiations with founder names:', error);
+            throw error;
+        }
     },
 };

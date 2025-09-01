@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, User } from '../types';
-import { LogoIcon, LogInIcon, LogOutIcon, MessageSquareIcon, LightbulbIcon, UserPlusIcon, UsersIcon, UserIcon, TrendingUpIcon, HamburgerIcon, XIcon } from './icons';
+import { LogoIcon, LogInIcon, LogOutIcon, MessageSquareIcon, LightbulbIcon, UserPlusIcon, UsersIcon, UserIcon, TrendingUpIcon, HamburgerIcon, XIcon, BellIcon } from './icons';
+import { firestoreService } from '../services/firestoreService';
 
 interface HeaderProps {
     currentView: View;
@@ -8,7 +9,6 @@ interface HeaderProps {
     userProfile: User | null;
     onLogin: () => void;
     onLogout: () => void;
-    pendingRequestCount: number;
     isMobileChatOpen?: boolean;
     isMobileNegotiationOpen?: boolean;
 }
@@ -40,10 +40,11 @@ const NavLink: React.FC<{
     );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, pendingRequestCount, isMobileChatOpen = false, isMobileNegotiationOpen = false }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, isMobileChatOpen = false, isMobileNegotiationOpen = false }) => {
     const [isMenuOpen, setMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const showNav = useHideOnScroll();
 
     const handleNavigation = (targetView: View) => {
@@ -64,6 +65,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
             return () => clearTimeout(timeout);
         }
     }, [sidebarOpen]);
+
+    // Real-time notification listener
+    useEffect(() => {
+        if (!userProfile) return;
+
+        const unsubscribe = firestoreService.getUnreadNotificationCountRealtime(
+            userProfile.id,
+            (count) => {
+                setUnreadNotificationCount(count);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [userProfile]);
 
     // If not logged in, show simple header
     if (!userProfile) {
@@ -126,13 +141,27 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         </div>
                     </div>
                     <div className="flex items-center">
+                        {/* Notification Bell */}
+                        <div className="relative mr-3">
+                            <button
+                                onClick={() => setView(View.NOTIFICATIONS)}
+                                className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none transition-colors"
+                                title="Notifications"
+                            >
+                                <BellIcon className="w-6 h-6 text-white" />
+                                {unreadNotificationCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
                         <div className="relative">
                             <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer" onClick={() => setMenuOpen(!isMenuOpen)} />
                             {isMenuOpen && (
                                 <div className="absolute right-0 mt-2 w-44 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
-                                    <a href="#" onClick={(e) => { e.preventDefault(); setView(View.ONBOARDING); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
                                     <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.PEOPLE); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.PEOPLE ? 'text-purple-400' : 'text-neutral-300'}`}><UsersIcon className="w-4 h-4"/> People</a>
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.REQUESTS); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.REQUESTS ? 'text-purple-400' : 'text-neutral-300'}`}>{pendingRequestCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1 mr-1">{pendingRequestCount}</span>}<UserPlusIcon className="w-4 h-4"/> Requests</a>
                                     <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
                                         <LogOutIcon className="w-4 h-4"/> Logout
                                     </a>
@@ -185,7 +214,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                 <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={MessageSquareIcon}>Messages</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.IDEAS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={LightbulbIcon}>Ideas</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.PEOPLE} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={UsersIcon}>People</NavLink></li>
-                                <li><NavLink currentView={currentView} targetView={View.REQUESTS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={UserPlusIcon} pendingCount={pendingRequestCount}>Requests</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.NEGOTIATIONS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={LightbulbIcon}>Negotiations</NavLink></li>
                             </ul>
                         </nav>
@@ -200,7 +228,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                 </div>
                                 {isMenuOpen && (
                                     <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm">
-                                        <a href="#" onClick={(e) => { e.preventDefault(); setView(View.ONBOARDING); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
+                                        <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
                                         <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
                                             <LogOutIcon className="w-4 h-4"/> Logout
                                         </a>
@@ -230,9 +258,26 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={handleNavigation} icon={MessageSquareIcon}>Messages</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.IDEAS} setView={handleNavigation} icon={LightbulbIcon}>Ideas</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.PEOPLE} setView={handleNavigation} icon={UsersIcon}>People</NavLink></li>
-                        <li><NavLink currentView={currentView} targetView={View.REQUESTS} setView={handleNavigation} icon={UserPlusIcon} pendingCount={pendingRequestCount}>Requests</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.NEGOTIATIONS} setView={handleNavigation} icon={LightbulbIcon}>Negotiations</NavLink></li>
                     </ul>
+                    
+                    {/* Notifications Section */}
+                    <div className="mt-6 pt-6 border-t border-white/10">
+                        <div
+                            className="flex items-center space-x-3 px-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 text-neutral-300 hover:bg-neutral-700/50 hover:text-white"
+                            onClick={() => setView(View.NOTIFICATIONS)}
+                        >
+                            <div className="relative">
+                                <BellIcon className="w-6 h-6" />
+                                {unreadNotificationCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="flex-grow">Notifications</span>
+                        </div>
+                    </div>
                 </nav>
                 <div className="mt-auto">
                     <div className="relative">
@@ -245,7 +290,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         </div>
                         {isMenuOpen && (
                             <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm">
-                                <a href="#" onClick={(e) => { e.preventDefault(); setView(View.ONBOARDING); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
+                                <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
                                 <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
                                     <LogOutIcon className="w-4 h-4"/> Logout
                                 </a>
@@ -254,6 +299,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                     </div>
                 </div>
             </aside>
+
+            {/* Notifications Panel */}
+            {/* This section is now handled by the NotificationsPage component */}
         </>
     );
 };

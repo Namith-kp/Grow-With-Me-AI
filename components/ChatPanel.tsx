@@ -113,6 +113,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
             text: newMessage,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
+        const messageText = newMessage;
         setNewMessage('');
         
         try {
@@ -130,6 +131,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
                 }
             }, { merge: true });
             await batch.commit();
+
+            // Create notification for the recipient
+            await firestoreService.createMessageNotification(currentUser.id, user.id, currentUser.name, messageText);
         } catch (error) {
             console.error('Failed to send message:', error);
         } finally {

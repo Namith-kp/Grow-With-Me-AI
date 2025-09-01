@@ -23,6 +23,8 @@ export interface User {
     name: string;
     role: Role;
     location: string;
+    dateOfBirth: string;
+    gender: string;
     skills: string[];
     interests: string[];
     lookingFor: string;
@@ -68,8 +70,9 @@ export enum View {
     MESSAGES = 'MESSAGES',
     PEOPLE = 'PEOPLE',
     IDEAS = 'IDEAS',
-    REQUESTS = 'REQUESTS',
     NEGOTIATIONS = 'NEGOTIATIONS',
+    PROFILE = 'PROFILE',
+    NOTIFICATIONS = 'NOTIFICATIONS',
 }
 
 export interface AnalyticsData {
@@ -87,6 +90,34 @@ export interface AnalyticsData {
         dau_data: { name: string; users: number }[];
         match_rate_data: { name: string; rate: number }[];
     };
+}
+
+// Notification types
+export enum NotificationType {
+    CONNECTION_REQUEST = 'connection_request',
+    MESSAGE = 'message',
+    NEGOTIATION_UPDATE = 'negotiation_update',
+    NEW_NEGOTIATION = 'new_negotiation'
+}
+
+export interface Notification {
+    id: string;
+    userId: string; // recipient user ID
+    type: NotificationType;
+    title: string;
+    message: string;
+    data?: {
+        connectionRequestId?: string;
+        chatId?: string;
+        negotiationId?: string;
+        senderId?: string;
+        senderName?: string;
+        responseStatus?: 'approved' | 'rejected';
+        respondedAt?: Date;
+    };
+    isRead: boolean;
+    timestamp: Date;
+    createdAt: Date;
 }
 
 // Analytics tracking interfaces
@@ -132,6 +163,7 @@ export interface Idea {
     description: string;
     requiredSkills: string[];
     status: 'recruiting' | 'building';
+    visibility: 'public' | 'private'; // NEW: Controls who can see the idea
     team: string[]; // Array of user IDs
     likes: string[]; // Array of user IDs
     comments: Comment[];
@@ -161,12 +193,17 @@ export interface Negotiation {
     investorName: string;
     investorAvatar: string;
     founderId: string;
+    founderName: string;
     status: 'pending' | 'active' | 'closed' | 'rejected' | 'accepted';
     timestamp: Date;
     offers: Offer[];
     finalInvestment?: number;
     finalEquity?: number;
     isRead?: boolean;
+    ideaInvestmentDetails?: {
+        targetInvestment: number;
+        equityOffered: number; // percentage
+    };
 }
 
 export interface ConnectionRequest {

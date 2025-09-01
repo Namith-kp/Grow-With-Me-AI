@@ -25,10 +25,11 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
+const githubProvider = new firebase.auth.GithubAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account',
   client_id: import.meta.env.VITE_FIREBASE_CLIENT_ID
 });
 
 
-export { auth, db, googleProvider };
+export { auth, db, googleProvider, githubProvider };

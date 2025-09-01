@@ -15,6 +15,7 @@
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-slot": "^1.2.3",
     "firebase": "^12.1.0",
+    "@simplewebauthn/browser": "^8.3.4",
     "framer-motion": "^12.23.12",
     "leva": "^0.10.0",
     "lucide-react": "^0.536.0",

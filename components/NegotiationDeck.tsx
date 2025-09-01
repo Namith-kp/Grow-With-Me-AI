@@ -33,12 +33,11 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
         );
     }
 
-    const { startupName, founderName, investorName, initialInvestment, initialEquity } = {
+    const { startupName, investorName, initialInvestment, initialEquity } = {
         startupName: negotiation.ideaTitle,
-        founderName: 'Founder', // In a real app, you'd fetch this from the founderId
         investorName: negotiation.investorName,
-        initialInvestment: negotiation.offers[0]?.investment || 0,
-        initialEquity: negotiation.offers[0]?.equity || 0,
+        initialInvestment: negotiation.ideaInvestmentDetails?.targetInvestment || negotiation.offers[0]?.investment || 0,
+        initialEquity: negotiation.ideaInvestmentDetails?.equityOffered || negotiation.offers[0]?.equity || 0,
     };
 
     const [offers, setOffers] = useState<Offer[]>(negotiation.offers || []);
@@ -47,7 +46,25 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
     const [status, setStatus] = useState<'ongoing' | 'accepted' | 'declined'>(
         negotiation.status === 'active' || negotiation.status === 'pending' ? 'ongoing' : negotiation.status
     );
+    const [founderName, setFounderName] = useState(negotiation.founderName || 'Founder');
     const unsubscribeRef = useRef<() => void>();
+
+    useEffect(() => {
+        // Fetch founder name from idea if not available in negotiation
+        if (!negotiation.founderName && negotiation.ideaId) {
+            const ideaRef = db.collection('ideas').doc(negotiation.ideaId);
+            ideaRef.get().then(doc => {
+                if (doc.exists) {
+                    const ideaData = doc.data();
+                    if (ideaData?.founderName) {
+                        setFounderName(ideaData.founderName);
+                    }
+                }
+            }).catch(error => {
+                console.error('Error fetching founder name from idea:', error);
+            });
+        }
+    }, [negotiation.founderName, negotiation.ideaId]);
 
     useEffect(() => {
         // Subscribe to real-time updates for this negotiation
@@ -75,18 +92,18 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
     }, [negotiation.id]);
 
     useEffect(() => {
-        // If there are no offers, and the current user is the founder, initialize with their first offer.
-        if (offers.length === 0 && currentUser.id === negotiation.founderId) {
+        // If there are no offers, automatically create the founder's initial offer from their idea investment details
+        if (offers.length === 0 && negotiation.ideaInvestmentDetails) {
             const founderInitialOffer: Offer = {
-                investment: 500000, // Placeholder, should come from idea
-                equity: 10, // Placeholder, should come from idea
+                investment: negotiation.ideaInvestmentDetails.targetInvestment,
+                equity: negotiation.ideaInvestmentDetails.equityOffered,
                 by: 'founder',
-                timestamp: new Date(),
+                timestamp: negotiation.timestamp, // Use negotiation creation time
             };
             onOfferMade(founderInitialOffer);
             setOffers([founderInitialOffer]);
         }
-    }, [offers.length, currentUser.id, negotiation.founderId, onOfferMade]);
+    }, [offers.length, negotiation.ideaInvestmentDetails, negotiation.timestamp, onOfferMade]);
 
     const currentOffer = offers[offers.length - 1];
     const currentUserRole = currentUser.id === negotiation.founderId ? 'founder' : 'investor';
@@ -120,26 +137,46 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
         onStatusChange('declined');
     };
 
-    const OfferCard: React.FC<{ offer: Offer, isLast: boolean }> = ({ offer, isLast }) => (
-        <div className={`p-4 rounded-xl ${isLast ? 'bg-purple-900/30 border border-purple-700/30 shadow-lg shadow-purple-500/20' : 'bg-slate-800/20 border border-slate-700/20'}`}>
-            <div className="flex justify-between items-center">
-                <span className="font-bold text-lg text-white">
-                    {offer.by === 'founder' ? `${negotiation.founderName}'s Offer` : `${negotiation.investorName}'s Offer`}
-                </span>
-                <span className="text-xs text-neutral-400">{new Date(offer.timestamp).toLocaleTimeString()}</span>
-            </div>
-            <div className="mt-2 flex gap-6 text-white">
-                <div className="flex items-center gap-2">
-                    <CurrencyDollarIcon className="w-5 h-5 text-green-400" />
-                    <span>${offer.investment.toLocaleString()}</span>
+    const OfferCard: React.FC<{ offer: Offer, isLast: boolean, isFirst: boolean }> = ({ offer, isLast, isFirst }) => {
+        const isFounderInitialOffer = offer.by === 'founder' && isFirst && negotiation.ideaInvestmentDetails;
+        
+        return (
+            <div className={`p-4 rounded-xl ${
+                isLast ? 'bg-purple-900/30 border border-purple-700/30 shadow-lg shadow-purple-500/20' : 
+                isFounderInitialOffer ? 'bg-blue-900/30 border border-blue-700/30 shadow-lg shadow-blue-500/20' :
+                'bg-slate-800/20 border border-slate-700/20'
+            }`}>
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-lg text-white">
+                            {offer.by === 'founder' ? `${founderName}'s Offer` : `${investorName}'s Offer`}
+                        </span>
+                        {isFounderInitialOffer && (
+                            <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                                Initial Demand
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-xs text-neutral-400">{new Date(offer.timestamp).toLocaleTimeString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <BriefcaseIcon className="w-5 h-5 text-blue-400" />
-                    <span>{offer.equity}% Equity</span>
+                <div className="mt-2 flex gap-6 text-white">
+                    <div className="flex items-center gap-2">
+                        <CurrencyDollarIcon className="w-5 h-5 text-green-400" />
+                        <span>${offer.investment.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <BriefcaseIcon className="w-5 h-5 text-blue-400" />
+                        <span>{offer.equity}% Equity</span>
+                    </div>
                 </div>
+                {isFounderInitialOffer && (
+                    <p className="text-xs text-blue-300 mt-2">
+                        This is the founder's original investment demand from their idea.
+                    </p>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="w-full h-full bg-gradient-to-br from-slate-950 to-black flex flex-col">
@@ -156,7 +193,7 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
                         )}
                         <div>
                             <h1 className="text-xl sm:text-2xl font-bold text-white">Negotiation for {negotiation.ideaTitle}</h1>
-                            <p className="text-sm text-slate-400">Between Founder & {negotiation.investorName} (Investor)</p>
+                            <p className="text-sm text-slate-400">Between {founderName} & {investorName} (Investor)</p>
                         </div>
                     </div>
                     {!isMobile && (
@@ -170,14 +207,14 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
                     {offers.length > 0 ? (
                          <div className="space-y-2">
                             {offers.map((offer, index) => (
-                                <OfferCard key={index} offer={offer} isLast={index === offers.length - 1} />
+                                <OfferCard key={index} offer={offer} isLast={index === offers.length - 1} isFirst={index === 0} />
                             ))}
                         </div>
                     ) : (
                         <div className="text-center p-8 bg-slate-800/20 border border-slate-700/20 rounded-xl">
-                            <p className="font-semibold text-white">Waiting for the first offer...</p>
+                            <p className="font-semibold text-white">Loading negotiation offers...</p>
                             <p className="text-sm text-slate-400 mt-1">
-                                {currentUserRole === 'founder' ? 'You can make the opening offer below.' : `Waiting for ${negotiation.founderName} to make an offer.`}
+                                The founder's initial investment demand will be displayed here.
                             </p>
                         </div>
                     )}

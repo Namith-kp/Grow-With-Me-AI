@@ -1,229 +1,396 @@
-import React, { useState, useEffect } from 'react';
-import { User } from '../types';
-import { XIcon, MapPinIcon, BrainCircuitIcon, CodeIcon, BullseyeIcon, MessageSquareIcon, UserPlusIcon, LinkIcon } from './icons';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../utils/cn';
-import { firestoreService } from '../services/firestoreService';
+import React, { useEffect, useRef, useCallback, useMemo } from "react";
+import "./ProfileCard.css";
 
 interface ProfileCardProps {
-    user: User;
-    onClose: () => void;
-    isOwnProfile: boolean;
-    onMessage?: (user: User) => void;
-    onConnect?: (user: User) => void;
-    onViewConnections?: (connectionIds: string[]) => void;
-    isConnected?: boolean;
-    isPending?: boolean;
-    onStartNegotiation?: (user: User) => void;
-    currentUserId?: string;
+  userProfile: any;
+  isEditing: boolean;
+  onEditClick: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  loading: boolean;
+  onBack: () => void;
+  avatarUrl?: string;
+  iconUrl?: string;
+  grainUrl?: string;
+  behindGradient?: string;
+  innerGradient?: string;
+  showBehindGradient?: boolean;
+  className?: string;
+  enableTilt?: boolean;
+  enableMobileTilt?: boolean;
+  mobileTiltSensitivity?: number;
+  miniAvatarUrl?: string;
+  name?: string;
+  title?: string;
+  handle?: string;
+  status?: string;
+  contactText?: string;
+  showUserInfo?: boolean;
+  onContactClick?: () => void;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ 
-    user, 
-    onClose, 
-    isOwnProfile, 
-    onMessage, 
-    onConnect, 
-    onViewConnections, 
-    isConnected: propIsConnected,
-    isPending: propIsPending,
-    onStartNegotiation,
-    currentUserId
+const DEFAULT_BEHIND_GRADIENT =
+  "radial-gradient(farthest-side circle at var(--pointer-x) var(--pointer-y),hsla(266,100%,90%,var(--card-opacity)) 4%,hsla(266,50%,80%,calc(var(--card-opacity)*0.75)) 10%,hsla(266,25%,70%,calc(var(--card-opacity)*0.5)) 50%,hsla(266,0%,60%,0) 100%),radial-gradient(35% 52% at 55% 20%,#00ffaac4 0%,#073aff00 100%),radial-gradient(100% 100% at 50% 50%,#00c1ffff 1%,#073aff00 76%),conic-gradient(from 124deg at 50% 50%,#c137ffff 0%,#07c6ffff 40%,#07c6ffff 60%,#c137ffff 100%)";
+
+const DEFAULT_INNER_GRADIENT =
+  "linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)";
+
+const ANIMATION_CONFIG = {
+  SMOOTH_DURATION: 600,
+  INITIAL_DURATION: 1500,
+  INITIAL_X_OFFSET: 70,
+  INITIAL_Y_OFFSET: 60,
+  DEVICE_BETA_OFFSET: 20,
+} as const;
+
+const clamp = (value: number, min = 0, max = 100): number =>
+  Math.min(Math.max(value, min), max);
+
+const round = (value: number, precision = 3): number =>
+  parseFloat(value.toFixed(precision));
+
+const adjust = (
+  value: number,
+  fromMin: number,
+  fromMax: number,
+  toMin: number,
+  toMax: number
+): number =>
+  round(toMin + ((toMax - toMin) * (value - fromMin)) / (fromMax - fromMin));
+
+const easeInOutCubic = (x: number): number =>
+  x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+const ProfileCardComponent: React.FC<ProfileCardProps> = ({
+  userProfile,
+  isEditing,
+  onEditClick,
+  onCancel,
+  onSave,
+  loading,
+  onBack,
+  avatarUrl,
+  iconUrl = "<Placeholder for icon URL>",
+  grainUrl = "<Placeholder for grain URL>",
+  behindGradient,
+  innerGradient,
+  showBehindGradient = true,
+  className = "",
+  enableTilt = true,
+  enableMobileTilt = false,
+  mobileTiltSensitivity = 5,
+  miniAvatarUrl,
+  name,
+  title,
+  handle,
+  status = "Online",
+  contactText = "Edit Profile",
+  showUserInfo = true,
+  onContactClick,
 }) => {
-    const [connectionStatus, setConnectionStatus] = useState({
-        isConnected: propIsConnected || false,
-        isPending: propIsPending || false
-    });
+  // Use userProfile data if available, otherwise fall back to individual props
+  const displayName = name || userProfile?.name || "User";
+  const displayTitle = title || userProfile?.role || "Member";
+  const displayHandle = handle || userProfile?.name?.toLowerCase().replace(/\s+/g, '') || "user";
+  const displayAvatarUrl = avatarUrl || userProfile?.avatarUrl || "";
+  const displayMiniAvatarUrl = miniAvatarUrl || userProfile?.avatarUrl || displayAvatarUrl;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-    // Update connection status when props change (for initial load)
-    useEffect(() => {
-        setConnectionStatus({
-            isConnected: propIsConnected || false,
-            isPending: propIsPending || false
-        });
-    }, [propIsConnected, propIsPending]);
-    
-    const connectionCount = user.connections?.length || 0;
-    
-    // Always use real-time listener for connection status updates when currentUserId is available
-    useEffect(() => {
-        if (currentUserId && onConnect) {
-            console.log(`ProfileCard: Setting up real-time listener for ${user.name} (${user.id})`);
-            // Use real-time listener for connection status updates
-            const unsubscribe = firestoreService.getConnectionStatusRealtime(
-                currentUserId, 
-                user.id, 
-                (status) => {
-                    console.log(`ProfileCard: Real-time status update for ${user.name}:`, status);
-                    setConnectionStatus(status);
-                }
-            );
-            
-            return unsubscribe;
+  const animationHandlers = useMemo(() => {
+    if (!enableTilt) return null;
+
+    let rafId: number | null = null;
+
+    const updateCardTransform = (
+      offsetX: number,
+      offsetY: number,
+      card: HTMLElement,
+      wrap: HTMLElement
+    ) => {
+      const width = card.clientWidth;
+      const height = card.clientHeight;
+
+      const percentX = clamp((100 / width) * offsetX);
+      const percentY = clamp((100 / height) * offsetY);
+
+      const centerX = percentX - 50;
+      const centerY = percentY - 50;
+
+      const properties = {
+        "--pointer-x": `${percentX}%`,
+        "--pointer-y": `${percentY}%`,
+        "--background-x": `${adjust(percentX, 0, 100, 35, 65)}%`,
+        "--background-y": `${adjust(percentY, 0, 100, 35, 65)}%`,
+        "--pointer-from-center": `${clamp(Math.hypot(percentY - 50, percentX - 50) / 50, 0, 1)}`,
+        "--pointer-from-top": `${percentY / 100}`,
+        "--pointer-from-left": `${percentX / 100}`,
+        "--rotate-x": `${round(-(centerX / 5))}deg`,
+        "--rotate-y": `${round(centerY / 4)}deg`,
+      };
+
+      Object.entries(properties).forEach(([property, value]) => {
+        wrap.style.setProperty(property, value);
+      });
+    };
+
+    const createSmoothAnimation = (
+      duration: number,
+      startX: number,
+      startY: number,
+      card: HTMLElement,
+      wrap: HTMLElement
+    ) => {
+      const startTime = performance.now();
+      const targetX = wrap.clientWidth / 2;
+      const targetY = wrap.clientHeight / 2;
+
+      const animationLoop = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = clamp(elapsed / duration);
+        const easedProgress = easeInOutCubic(progress);
+
+        const currentX = adjust(easedProgress, 0, 1, startX, targetX);
+        const currentY = adjust(easedProgress, 0, 1, startY, targetY);
+
+        updateCardTransform(currentX, currentY, card, wrap);
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(animationLoop);
         }
-    }, [user.id, currentUserId, onConnect]);
-    
-    return (
-        <AnimatePresence>
-            <motion.div 
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-            >
-                <motion.div 
-                    className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-xl border border-slate-700/50 rounded-3xl max-w-2xl w-full mx-auto p-6 sm:p-8 relative shadow-2xl shadow-black/50"
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                    <button 
-                        onClick={onClose} 
-                        aria-label="Close profile" 
-                        className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition-all duration-200 hover:scale-110"
-                    >
-                        <XIcon className="w-5 h-5" />
-                    </button>
+      };
 
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
-                        <div className="relative">
-                            <img 
-                                src={user.avatarUrl} 
-                                alt={user.name} 
-                                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-slate-600 shadow-2xl" 
-                            />
-                            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full border-2 border-slate-900 flex items-center justify-center">
-                                <div className="w-3 h-3 bg-white rounded-full"></div>
-                            </div>
-                        </div>
-                        <div className="flex-1">
-                            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">{user.name}</h2>
-                            <span className={cn(
-                                "inline-block text-lg font-medium px-4 py-2 rounded-full mb-3",
-                                user.role === 'Developer' ? 'bg-blue-900/30 text-blue-300 border border-blue-700/30' : 
-                                user.role === 'Founder' ? 'bg-purple-900/30 text-purple-300 border border-purple-700/30' : 
-                                'bg-emerald-900/30 text-emerald-300 border border-emerald-700/30'
-                            )}>
-                                {user.role}
-                            </span>
-                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-slate-400">
-                                <div className="flex items-center gap-2">
-                                    <MapPinIcon className="w-4 h-4 text-slate-500" />
-                                    <span className="text-sm">{user.location}</span>
-                                </div>
-                                
-                                {isOwnProfile ? (
-                                    <button 
-                                        onClick={() => onViewConnections && onViewConnections(user.connections || [])}
-                                        className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors text-sm"
-                                        disabled={connectionCount === 0}
-                                    >
-                                        <LinkIcon className="w-4 h-4 text-slate-500" />
-                                        <span>{connectionCount} {connectionCount === 1 ? 'Connection' : 'Connections'}</span>
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <LinkIcon className="w-4 h-4 text-slate-500" />
-                                        <span>{connectionCount} {connectionCount === 1 ? 'Connection' : 'Connections'}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+      rafId = requestAnimationFrame(animationLoop);
+    };
 
-                    <div className="mt-8 space-y-6">
-                        <div className="space-y-3">
-                            <h3 className="font-semibold text-lg text-white flex items-center gap-2">
-                                <CodeIcon className="w-5 h-5 text-emerald-400"/> 
-                                Skills
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                                {user.skills.map(skill => (
-                                    <span 
-                                        key={skill} 
-                                        className="bg-slate-800/50 text-slate-300 px-3 py-1.5 rounded-full text-sm border border-slate-700/50 hover:border-slate-600/50 transition-colors"
-                                    >
-                                        {skill}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <h3 className="font-semibold text-lg text-white flex items-center gap-2">
-                                <BrainCircuitIcon className="w-5 h-5 text-purple-400"/> 
-                                Interests
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                                {user.interests.map(interest => (
-                                    <span 
-                                        key={interest} 
-                                        className="bg-slate-800/50 text-slate-300 px-3 py-1.5 rounded-full text-sm border border-slate-700/50 hover:border-slate-600/50 transition-colors"
-                                    >
-                                        {interest}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <h3 className="font-semibold text-lg text-white flex items-center gap-2">
-                                <BullseyeIcon className="w-5 h-5 text-amber-400"/> 
-                                Looking For
-                            </h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">{user.lookingFor}</p>
-                        </div>
-                    </div>
+    return {
+      updateCardTransform,
+      createSmoothAnimation,
+      cancelAnimation: () => {
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      },
+    };
+  }, [enableTilt]);
 
-                    {!isOwnProfile && (
-                        <div className="mt-8 pt-6 border-t border-slate-700/30 flex flex-col sm:flex-row justify-center gap-3">
-                            {connectionStatus.isConnected ? (
-                                <button 
-                                    disabled
-                                    className="flex items-center justify-center gap-2 bg-emerald-600/20 text-emerald-300 border border-emerald-600/30 font-medium py-3 px-6 rounded-xl w-full sm:w-auto cursor-not-allowed"
-                                >
-                                    <UserPlusIcon className="w-5 h-5" />
-                                    Connected
-                                </button>
-                            ) : connectionStatus.isPending ? (
-                                <button 
-                                    disabled
-                                    className="flex items-center justify-center gap-2 bg-amber-600/20 text-amber-300 border border-amber-600/30 font-medium py-3 px-6 rounded-xl w-full sm:w-auto cursor-not-allowed"
-                                >
-                                    <UserPlusIcon className="w-5 h-5" />
-                                    Pending
-                                </button>
-                            ) : (
-                                <button 
-                                    onClick={async () => {
-                                        if (onConnect) {
-                                            onConnect(user);
-                                            // Optimistically update the status to show pending
-                                            setConnectionStatus({ isConnected: false, isPending: true });
-                                        }
-                                    }}
-                                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-slate-600 to-slate-500 hover:from-slate-500 hover:to-slate-400 text-white font-medium py-3 px-6 rounded-xl w-full sm:w-auto transition-all duration-200 hover:shadow-lg hover:shadow-slate-500/25 transform hover:scale-105"
-                                >
-                                    <UserPlusIcon className="w-5 h-5" />
-                                    Connect
-                                </button>
-                            )}
-                            
-                            <button 
-                                onClick={() => onMessage && onMessage(user)}
-                                className="flex items-center justify-center gap-2 bg-slate-800/50 hover:bg-slate-700/50 text-white font-medium py-3 px-6 rounded-xl w-full sm:w-auto transition-all duration-200 hover:shadow-lg hover:shadow-slate-500/25 transform hover:scale-105"
-                            >
-                                <MessageSquareIcon className="w-5 h-5" />
-                                Message
-                            </button>
-                        </div>
-                    )}
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      const card = cardRef.current;
+      const wrap = wrapRef.current;
+
+      if (!card || !wrap || !animationHandlers) return;
+
+      const rect = card.getBoundingClientRect();
+      animationHandlers.updateCardTransform(
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+        card,
+        wrap
+      );
+    },
+    [animationHandlers]
+  );
+
+  const handlePointerEnter = useCallback(() => {
+    const card = cardRef.current;
+    const wrap = wrapRef.current;
+
+    if (!card || !wrap || !animationHandlers) return;
+
+    animationHandlers.cancelAnimation();
+    wrap.classList.add("active");
+    card.classList.add("active");
+  }, [animationHandlers]);
+
+  const handlePointerLeave = useCallback(
+    (event: PointerEvent) => {
+      const card = cardRef.current;
+      const wrap = wrapRef.current;
+
+      if (!card || !wrap || !animationHandlers) return;
+
+      animationHandlers.createSmoothAnimation(
+        ANIMATION_CONFIG.SMOOTH_DURATION,
+        event.offsetX,
+        event.offsetY,
+        card,
+        wrap
+      );
+      wrap.classList.remove("active");
+      card.classList.remove("active");
+    },
+    [animationHandlers]
+  );
+
+  const handleDeviceOrientation = useCallback(
+    (event: DeviceOrientationEvent) => {
+      const card = cardRef.current;
+      const wrap = wrapRef.current;
+
+      if (!card || !wrap || !animationHandlers) return;
+
+      const { beta, gamma } = event;
+      if (!beta || !gamma) return;
+
+      animationHandlers.updateCardTransform(
+        card.clientHeight / 2 + gamma * mobileTiltSensitivity,
+        card.clientWidth / 2 + (beta - ANIMATION_CONFIG.DEVICE_BETA_OFFSET) * mobileTiltSensitivity,
+        card,
+        wrap
+      );
+    },
+    [animationHandlers, mobileTiltSensitivity]
+  );
+
+  useEffect(() => {
+    if (!enableTilt || !animationHandlers) return;
+
+    const card = cardRef.current;
+    const wrap = wrapRef.current;
+
+    if (!card || !wrap) return;
+
+    const pointerMoveHandler = handlePointerMove as EventListener;
+    const pointerEnterHandler = handlePointerEnter as EventListener;
+    const pointerLeaveHandler = handlePointerLeave as EventListener;
+    const deviceOrientationHandler = handleDeviceOrientation as EventListener;
+
+    const handleClick = () => {
+      if (!enableMobileTilt || location.protocol !== 'https:') return;
+      if (typeof (window.DeviceMotionEvent as any).requestPermission === 'function') {
+        (window.DeviceMotionEvent as any)
+          .requestPermission()
+          .then((state: string) => {
+            if (state === 'granted') {
+              window.addEventListener('deviceorientation', deviceOrientationHandler);
+            }
+          })
+          .catch((err: any) => console.error(err));
+      } else {
+        window.addEventListener('deviceorientation', deviceOrientationHandler);
+      }
+    };
+
+    card.addEventListener("pointerenter", pointerEnterHandler);
+    card.addEventListener("pointermove", pointerMoveHandler);
+    card.addEventListener("pointerleave", pointerLeaveHandler);
+    card.addEventListener('click', handleClick);
+
+    const initialX = wrap.clientWidth - ANIMATION_CONFIG.INITIAL_X_OFFSET;
+    const initialY = ANIMATION_CONFIG.INITIAL_Y_OFFSET;
+
+    animationHandlers.updateCardTransform(initialX, initialY, card, wrap);
+    animationHandlers.createSmoothAnimation(
+      ANIMATION_CONFIG.INITIAL_DURATION,
+      initialX,
+      initialY,
+      card,
+      wrap
     );
+
+    return () => {
+      card.removeEventListener("pointerenter", pointerEnterHandler);
+      card.removeEventListener("pointermove", pointerMoveHandler);
+      card.removeEventListener("pointerleave", pointerLeaveHandler);
+      card.removeEventListener('click', handleClick);
+      window.removeEventListener('deviceorientation', deviceOrientationHandler);
+      animationHandlers.cancelAnimation();
+    };
+  }, [
+    enableTilt,
+    enableMobileTilt,
+    animationHandlers,
+    handlePointerMove,
+    handlePointerEnter,
+    handlePointerLeave,
+    handleDeviceOrientation,
+  ]);
+
+  const cardStyle = useMemo(
+    () =>
+      ({
+        "--icon": iconUrl ? `url(${iconUrl})` : "none",
+        "--grain": grainUrl ? `url(${grainUrl})` : "none",
+        "--behind-gradient": showBehindGradient
+          ? (behindGradient ?? DEFAULT_BEHIND_GRADIENT)
+          : "none",
+        "--inner-gradient": innerGradient ?? DEFAULT_INNER_GRADIENT,
+      }) as React.CSSProperties,
+    [iconUrl, grainUrl, showBehindGradient, behindGradient, innerGradient]
+  );
+
+  const handleContactClick = useCallback(() => {
+    onContactClick?.();
+  }, [onContactClick]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className={`pc-card-wrapper ${className}`.trim()}
+      style={cardStyle}
+    >
+      <section ref={cardRef} className="pc-card">
+        <div className="pc-inside">
+          <div className="pc-shine" />
+          <div className="pc-glare" />
+          <div className="pc-content pc-avatar-content">
+            <img
+              className="avatar"
+              src={displayAvatarUrl}
+              alt={`${displayName} avatar`}
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
+            />
+            {showUserInfo && (
+              <div className="pc-user-info">
+                <div className="pc-user-details">
+                  <div className="pc-mini-avatar">
+                    <img
+                      src={displayMiniAvatarUrl}
+                      alt={`${displayName} mini avatar`}
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.opacity = "0.5";
+                        target.src = displayAvatarUrl;
+                      }}
+                    />
+                  </div>
+                  <div className="pc-user-text">
+                    <div className="pc-handle">@{displayHandle}</div>
+                    <div className="pc-status">{status}</div>
+                  </div>
+                </div>
+                <button
+                  className="pc-contact-btn"
+                  onClick={onEditClick}
+                  disabled={loading}
+                  style={{ pointerEvents: "auto" }}
+                  type="button"
+                  aria-label={`Edit ${displayName} profile`}
+                >
+                  {contactText}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="pc-content">
+            <div className="pc-details">
+              <h3>{displayName}</h3>
+              <p>{displayTitle}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 };
+
+const ProfileCard = React.memo(ProfileCardComponent);
 
 export default ProfileCard;
