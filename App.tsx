@@ -5,6 +5,56 @@ function isAndroidWebView() {
         (/Android/.test(navigator.userAgent) && /Version\//.test(navigator.userAgent))
     );
 }
+
+// Utility: Generate device fingerprint for new device detection
+function generateDeviceFingerprint(): string {
+    if (typeof navigator === 'undefined') return 'unknown';
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillText('Device fingerprint', 2, 2);
+    }
+    
+    const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset(),
+        canvas.toDataURL()
+    ].join('|');
+    
+    return btoa(fingerprint).substring(0, 32);
+}
+
+// Utility: Check if this is a new device for the user
+function isNewDevice(userId: string): boolean {
+    try {
+        const deviceKey = `device_${userId}`;
+        const currentFingerprint = generateDeviceFingerprint();
+        const storedFingerprint = localStorage.getItem(deviceKey);
+        
+        if (!storedFingerprint) {
+            // First time on this device
+            localStorage.setItem(deviceKey, currentFingerprint);
+            return true;
+        }
+        
+        // Check if device fingerprint has changed significantly
+        if (storedFingerprint !== currentFingerprint) {
+            // Update stored fingerprint
+            localStorage.setItem(deviceKey, currentFingerprint);
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.warn('Error checking device fingerprint:', error);
+        return false; // Default to not new device if we can't check
+    }
+}
 import { CacheProvider } from './app/CacheContext';
 // Add GoogleAuth plugin import
 import { nativeGoogleLogin } from './utils/nativeGoogleAuth';
@@ -39,6 +89,7 @@ function getTokenFromUrl() {
     const params = new URLSearchParams(window.location.search);
     return params.get("token");
 }
+
 
 
 
@@ -150,6 +201,8 @@ const App: React.FC = () => {
     const [pendingAuthUser, setPendingAuthUser] = useState<firebase.User | null>(null);
     const [pendingUserProfile, setPendingUserProfile] = useState<User | null>(null);
     const [isInPasskeyFlow, setIsInPasskeyFlow] = useState(false);
+    const [showNewDevicePasskeyPrompt, setShowNewDevicePasskeyPrompt] = useState(false);
+    const [isNewDevice, setIsNewDevice] = useState(false);
     const currentViewRef = useRef<View>(view);
 
     // Update the ref whenever view changes
@@ -168,6 +221,8 @@ const App: React.FC = () => {
         setShowPasskeyVerification(false);
         setPendingAuthUser(null);
         setPendingUserProfile(null);
+        setShowNewDevicePasskeyPrompt(false);
+        setIsNewDevice(false);
     }, []);
 
     const navigate = useCallback((targetView: View) => {
@@ -337,6 +392,20 @@ const App: React.FC = () => {
                         profile = await firestoreService.getUserProfile(user.uid);
                     }
                     if (profile) {
+                        // Check if this is a new device and user has passkeys set up
+                        const deviceIsNew = isNewDevice(user.uid);
+                        setIsNewDevice(deviceIsNew);
+                        
+                        // Check if user has passkeys registered
+                        const hasPasskeys = await checkUserHasPasskeys(user.uid);
+                        
+                        // If it's a new device and user has passkeys, prompt to set up passkey on this device
+                        if (deviceIsNew && hasPasskeys && !user.isAnonymous) {
+                            console.log('New device detected for user with existing passkeys, prompting for passkey setup');
+                            setShowNewDevicePasskeyPrompt(true);
+                            setAuthLoading(false);
+                            return; // Don't proceed with normal navigation yet
+                        }
                         // Ensure linked provider email is persisted/displayed
                         if ((!profile as any) || !profile.email) {
                             // no-op safeguarding
@@ -810,6 +879,30 @@ const App: React.FC = () => {
         }
     };
 
+    // Handle new device passkey setup
+    const handleNewDevicePasskeySetup = () => {
+        console.log('User chose to set up passkey on new device');
+        setShowNewDevicePasskeyPrompt(false);
+        setShowPasskeyRegistration(true);
+        setIsInPasskeyFlow(true);
+    };
+
+    // Handle skipping passkey setup on new device
+    const handleNewDevicePasskeySkip = () => {
+        console.log('User chose to skip passkey setup on new device');
+        setShowNewDevicePasskeyPrompt(false);
+        // Continue with normal navigation
+        if (userProfile) {
+            const localDone = (()=>{ try { return localStorage.getItem(`onboardingCompleted:${userProfile.id}`) === '1'; } catch { return false; } })();
+            const hasCompleted = (userProfile as any).onboardingCompleted === true || localDone;
+            if (!hasCompleted && (!userProfile.role || (userProfile.role === Role.Founder && !userProfile.location))) {
+                navigate(View.ONBOARDING);
+            } else {
+                navigate(View.DASHBOARD);
+            }
+        }
+    };
+
     const [focusedIdeaId, setFocusedIdeaId] = useState<string | null>(null);
 
     const renderContent = () => {
@@ -1095,6 +1188,45 @@ const App: React.FC = () => {
                                     Cancel
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* New Device Passkey Setup Prompt */}
+                {showNewDevicePasskeyPrompt && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">New Device Detected</h3>
+                                <p className="text-slate-400 text-sm">
+                                    You're logging in from a new device. For enhanced security, we recommend setting up a passkey on this device.
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <button
+                                    onClick={handleNewDevicePasskeySetup}
+                                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                                >
+                                    Set Up Passkey
+                                </button>
+                                
+                                <button
+                                    onClick={handleNewDevicePasskeySkip}
+                                    className="w-full bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                                >
+                                    Skip for Now
+                                </button>
+                            </div>
+                            
+                            <p className="text-xs text-slate-500 text-center mt-4">
+                                You can set up a passkey later in your profile settings.
+                            </p>
                         </div>
                     </div>
                 )}
