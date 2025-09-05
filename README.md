@@ -7,7 +7,7 @@ This contains everything you need to run your app locally.
 **Prerequisites:**  Node.js
 
 
-1. Install dependencies:
+1. Install dependencie:
    `npm install`
 # Grow With Me
 
