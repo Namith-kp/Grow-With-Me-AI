@@ -20,10 +20,7 @@ export interface InvestorProfile {
 export interface User {
     id: string; // Firebase UID
     email: string;
-<<<<<<< HEAD
     phone?: string;
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     name: string;
     role: Role;
     location: string;
