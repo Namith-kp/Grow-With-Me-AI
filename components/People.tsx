@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { User } from '../types';
+<<<<<<< HEAD
 // ProfileCard import removed - component no longer exists
+=======
+import ProfileCard from './ProfileCard';
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 import { UsersIcon, XCircleIcon } from './icons';
 
 interface PeopleProps {
@@ -11,9 +15,24 @@ interface PeopleProps {
 }
 
 const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, onRemoveConnection }) => {
+<<<<<<< HEAD
     const [isManageMode, setManageMode] = useState(false);
 
     // Removed selectedUser state and related functions - no longer needed without ProfileCard
+=======
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isManageMode, setManageMode] = useState(false);
+
+    const handleUserClick = (user: User) => {
+        if (!isManageMode) {
+            setSelectedUser(user);
+        }
+    };
+
+    const handleCloseProfile = () => {
+        setSelectedUser(null);
+    };
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     const handleRemoveClick = (e: React.MouseEvent, user: User) => {
         e.stopPropagation(); // Prevent the profile card from opening
@@ -51,7 +70,12 @@ const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, on
                             {connections.map(user => (
                                 <div 
                                     key={user.id} 
+<<<<<<< HEAD
                                     className="relative bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col items-center text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 transform hover:-translate-y-1"
+=======
+                                    onClick={() => handleUserClick(user)} 
+                                    className="relative bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col items-center text-center cursor-pointer hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 transform hover:-translate-y-1"
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                 >
                                     {isManageMode && (
                                         <button 
@@ -81,7 +105,20 @@ const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, on
                 </div>
             </div>
 
+<<<<<<< HEAD
             {/* ProfileCard removed - component no longer exists */}
+=======
+            {selectedUser && (
+                <ProfileCard 
+                    user={selectedUser} 
+                    onClose={handleCloseProfile} 
+                    isOwnProfile={selectedUser.id === currentUser.id}
+                    onMessage={onMessage}
+                    onConnect={() => {}}
+                    currentUserId={currentUser.id}
+                />
+            )}
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
         </>
     );
 };

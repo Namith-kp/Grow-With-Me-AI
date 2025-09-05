@@ -55,22 +55,31 @@ const rpName = 'Grow With Me';
 // Use environment variable or detect based on request origin
 const getRpID = (req: any) => {
   const origin = req.get('origin') || req.get('referer');
+<<<<<<< HEAD
   console.log('Request origin:', origin);
   
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
   if (origin && origin.includes('localhost')) {
     return 'localhost';
   }
   if (origin && origin.includes('grow-with-me-ai.vercel.app')) {
     return 'grow-with-me-ai.vercel.app';
   }
+<<<<<<< HEAD
   
   // For mobile apps or unknown origins, use the production domain
   // This ensures passkeys registered on web work on mobile
   return 'grow-with-me-ai.vercel.app';
+=======
+  // Default fallback
+  return 'localhost';
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 };
 
 const getOrigin = (req: any) => {
   const origin = req.get('origin') || req.get('referer');
+<<<<<<< HEAD
   console.log('Request origin for getOrigin:', origin);
   
   if (origin) {
@@ -79,6 +88,15 @@ const getOrigin = (req: any) => {
   
   // For mobile apps or unknown origins, use the production domain
   return 'https://grow-with-me-ai.vercel.app';
+=======
+  if (origin) {
+    return origin;
+  }
+  // Default fallbacks
+  return process.env.NODE_ENV === 'production' 
+    ? 'https://grow-with-me-ai.vercel.app' 
+    : 'http://localhost:5173';
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 };
 
 app.post('/webauthn/register/begin', async (req, res) => {

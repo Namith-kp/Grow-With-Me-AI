@@ -63,6 +63,7 @@ export const firestoreService = {
         const userRef = db.collection("users").doc(uid);
         await userRef.update(data);
     },
+<<<<<<< HEAD
     /** For legacy users, remove Gmail/Google-linked avatar URLs and mark as non-custom */
     stripGoogleAvatarsForAllUsers: async (): Promise<number> => {
         const snapshot = await db.collection('users').get();
@@ -108,6 +109,8 @@ export const firestoreService = {
         await userRef.update({ photoURL });
         return photoURL;
     },
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     getUsers: async (exceptUid?: string): Promise<User[]> => {
         const usersRef = db.collection("users");
@@ -973,6 +976,7 @@ export const firestoreService = {
         return countMap;
     },
 
+<<<<<<< HEAD
     /**
      * Ideas an investor has invested in (based on accepted negotiations)
      */
@@ -1017,6 +1021,8 @@ export const firestoreService = {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
     },
 
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     getFounderIdeaEngagementAnalytics: async (founderId: string) => {
         const ideas = await firestoreService.getIdeasByFounder(founderId);
         let totalLikes = 0;

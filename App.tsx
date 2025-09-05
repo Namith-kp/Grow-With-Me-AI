@@ -141,7 +141,10 @@ const App: React.FC = () => {
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
     const [selectedUserForChat, setSelectedUserForChat] = useState<User | null>(null);
+<<<<<<< HEAD
     const [selectedUserForProfile, setSelectedUserForProfile] = useState<User | null>(null);
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const [connections, setConnections] = useState<User[]>([]);
     const [founderEngagement, setFounderEngagement] = useState<{ totalLikes: number; totalComments: number } | null>(null);
     const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
@@ -335,6 +338,7 @@ const App: React.FC = () => {
                         profile = await firestoreService.getUserProfile(user.uid);
                     }
                     if (profile) {
+<<<<<<< HEAD
                         // Ensure linked provider email is persisted/displayed
                         if ((!profile as any) || !profile.email) {
                             // no-op safeguarding
@@ -347,6 +351,8 @@ const App: React.FC = () => {
                                 console.warn('Failed to backfill email on profile:', e);
                             }
                         }
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         setUserProfile(profile);
                         if (!user.isAnonymous) {
                             try {
@@ -372,9 +378,13 @@ const App: React.FC = () => {
                         // Don't interfere with user's manual navigation between tabs
                         if (currentViewRef.current === View.LANDING || currentViewRef.current === View.AUTH) {
                             console.log('Handling initial navigation for:', { view: currentViewRef.current, profileRole: profile.role, profileLocation: profile.location });
+<<<<<<< HEAD
                             const localDone = (()=>{ try { return localStorage.getItem(`onboardingCompleted:${profile.id}`) === '1'; } catch { return false; } })();
                             const hasCompleted = (profile as any).onboardingCompleted === true || localDone;
                             if (!hasCompleted && (!profile.role || (profile.role === Role.Founder && !profile.location))) {
+=======
+                            if (!profile.role || profile.role === Role.Founder && !profile.location) {
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                 console.log('Navigating to ONBOARDING');
                                 navigate(View.ONBOARDING);
                             } else {
@@ -655,6 +665,7 @@ const App: React.FC = () => {
         setView(View.MESSAGES);
     };
 
+<<<<<<< HEAD
     const handleConnect = async (partner: User) => {
         if (!userProfile) return;
         console.log('🔄 App.tsx: handleConnect called for user:', partner.name, partner.id);
@@ -677,6 +688,8 @@ const App: React.FC = () => {
         console.log('Navigation should happen now');
     };
 
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const handleRemoveConnection = async (connectionToRemove: User) => {
         if (!userProfile) return;
         try {
@@ -712,6 +725,7 @@ const App: React.FC = () => {
         return () => window.removeEventListener('navigate-dashboard', handler);
     }, [navigate]);
 
+<<<<<<< HEAD
     // Listen for onboarding passkey registration request and open registration modal
     React.useEffect(() => {
         const onPasskeyRegister = () => {
@@ -725,16 +739,28 @@ const App: React.FC = () => {
         return () => window.removeEventListener('onboarding-passkey-register', onPasskeyRegister as any);
     }, [authUser, userProfile]);
 
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const handlePasskeyComplete = (skipped: boolean = false) => {
         if (pendingAuthUser && pendingUserProfile) {
             setAuthUser(pendingAuthUser);
             setUserProfile(pendingUserProfile);
             
+<<<<<<< HEAD
             // Consider explicit completion flags and local fallback in addition to profile fields
             const localDone = (()=>{ try { return localStorage.getItem(`onboardingCompleted:${pendingAuthUser.uid}`) === '1'; } catch { return false; } })();
             const explicitDone = (pendingUserProfile as any).onboardingCompleted === true || localDone || skipped;
             const fieldsLookComplete = !!(pendingUserProfile.name && pendingUserProfile.name.trim() !== '' && pendingUserProfile.role && pendingUserProfile.location && pendingUserProfile.skills && pendingUserProfile.skills.length > 0);
             const hasCompletedOnboarding = explicitDone || fieldsLookComplete;
+=======
+            // Check if user has completed onboarding
+            const hasCompletedOnboarding = pendingUserProfile.name && 
+                                         pendingUserProfile.name.trim() !== '' && 
+                                         pendingUserProfile.role && 
+                                         pendingUserProfile.location && 
+                                         pendingUserProfile.skills && 
+                                         pendingUserProfile.skills.length > 0;
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             
             if (hasCompletedOnboarding) {
                 navigate(View.DASHBOARD);
@@ -752,11 +778,21 @@ const App: React.FC = () => {
             setAuthUser(pendingAuthUser);
             setUserProfile(pendingUserProfile);
             
+<<<<<<< HEAD
             // Consider explicit completion flags and local fallback in addition to profile fields
             const localDone = (()=>{ try { return localStorage.getItem(`onboardingCompleted:${pendingAuthUser.uid}`) === '1'; } catch { return false; } })();
             const explicitDone = (pendingUserProfile as any).onboardingCompleted === true || localDone;
             const fieldsLookComplete = !!(pendingUserProfile.name && pendingUserProfile.name.trim() !== '' && pendingUserProfile.role && pendingUserProfile.location && pendingUserProfile.skills && pendingUserProfile.skills.length > 0);
             const hasCompletedOnboarding = explicitDone || fieldsLookComplete;
+=======
+            // Check if user has completed onboarding
+            const hasCompletedOnboarding = pendingUserProfile.name && 
+                                         pendingUserProfile.name.trim() !== '' && 
+                                         pendingUserProfile.role && 
+                                         pendingUserProfile.location && 
+                                         pendingUserProfile.skills && 
+                                         pendingUserProfile.skills.length > 0;
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             
             if (hasCompletedOnboarding) {
                 navigate(View.DASHBOARD);
@@ -769,6 +805,7 @@ const App: React.FC = () => {
         }
     };
 
+<<<<<<< HEAD
     const handlePasskeySkip = async () => {
         try {
             // Persist skip so we don't prompt or route to onboarding again
@@ -785,6 +822,10 @@ const App: React.FC = () => {
         } finally {
             handlePasskeyComplete(true);
         }
+=======
+    const handlePasskeySkip = () => {
+        handlePasskeyComplete(true);
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     };
 
     const checkUserHasPasskeys = async (uid: string): Promise<boolean> => {
@@ -808,8 +849,11 @@ const App: React.FC = () => {
         }
     };
 
+<<<<<<< HEAD
     const [focusedIdeaId, setFocusedIdeaId] = useState<string | null>(null);
 
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const renderContent = () => {
         if (isAuthLoading && !areKeysMissing && !authConfigError) {
             return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div></div>;
@@ -856,7 +900,10 @@ const App: React.FC = () => {
                         setSearchQuery={setSearchQuery}
                         hasActiveSearch={matches.length > 0}
                         onMessage={handleMessageUser}
+<<<<<<< HEAD
                         onViewProfile={handleViewUserProfile}
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         onRequestsUpdated={() => {
                             // This is a simple way to trigger a re-fetch of sent requests
                             // by toggling a state variable or re-calling the fetch function.
@@ -921,7 +968,10 @@ const App: React.FC = () => {
                         setSelectedNegotiationId(negotiationId);
                         setView(View.NEGOTIATIONS);
                     }}
+<<<<<<< HEAD
                     focusedIdeaId={focusedIdeaId}
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 />;
             case View.PEOPLE:
                 return <People 
@@ -932,6 +982,7 @@ const App: React.FC = () => {
                         />;
             case View.PROFILE:
                 if (!userProfile) return null;
+<<<<<<< HEAD
                 // If viewing another user's profile, show their profile in read-only mode
                 if (selectedUserForProfile && selectedUserForProfile.id !== userProfile.id) {
                     return <Profile 
@@ -951,17 +1002,22 @@ const App: React.FC = () => {
                     />;
                 }
                 // Otherwise show current user's profile
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 return <Profile 
                     userProfile={userProfile}
                     onUpdateProfile={handleProfileUpdate}
                     onBack={() => navigate(View.DASHBOARD)}
                     loading={false}
                     error={error}
+<<<<<<< HEAD
                     isReadOnly={false}
                     currentUser={userProfile}
                     onNavigateToIdea={(ideaId) => { setFocusedIdeaId(ideaId); navigate(View.IDEAS); }}
                     onConnect={handleConnect}
                     onMessage={handleMessageUser}
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 />;
             case View.NOTIFICATIONS:
                 if (!userProfile) return null;
@@ -972,9 +1028,13 @@ const App: React.FC = () => {
                 />;
             default:
                 if (!userProfile) return null;
+<<<<<<< HEAD
                 console.log('Rendering Dashboard with onViewProfile:', handleViewUserProfile);
                 console.log('handleViewUserProfile function:', typeof handleViewUserProfile);
                 return <Dashboard user={userProfile} matches={filteredMatches} isLoading={isLoading} error={error} onFindMatches={handleFindMatches} searchQuery={searchQuery} setSearchQuery={setSearchQuery} hasActiveSearch={matches.length > 0} onMessage={handleMessageUser} onViewProfile={handleViewUserProfile} />;
+=======
+                return <Dashboard user={userProfile} matches={filteredMatches} isLoading={isLoading} error={error} onFindMatches={handleFindMatches} searchQuery={searchQuery} setSearchQuery={setSearchQuery} hasActiveSearch={matches.length > 0} onMessage={handleMessageUser} />;
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
         }
     };
 
@@ -994,7 +1054,11 @@ const App: React.FC = () => {
         <CacheProvider>
             <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
                 {(areKeysMissing || authConfigError === 'unauthorized-domain') && <ApiKeysNotice isDomainError={authConfigError === 'unauthorized-domain'} />}
+<<<<<<< HEAD
                 {(view !== View.LANDING && view !== View.AUTH && view !== View.ONBOARDING) && (
+=======
+                {(view !== View.LANDING && view !== View.AUTH) && (
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     <Header 
                         currentView={view} 
                         setView={navigate} 
@@ -1005,12 +1069,57 @@ const App: React.FC = () => {
                         isMobileNegotiationOpen={isMobileNegotiationOpen}
                     />
                 )}
+<<<<<<< HEAD
                 <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH && view !== View.ONBOARDING) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS || view === View.PROFILE || view === View.NOTIFICATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
+=======
+                <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS || view === View.PROFILE || view === View.NOTIFICATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     {renderContent()}
                 </main>
                 
                 {/* Passkey Registration Prompt */}
+<<<<<<< HEAD
                 {/* Passkey onboarding is now a step inside onboarding, not a popup */}
+=======
+                {showPasskeyPrompt && pendingAuthUser && pendingUserProfile && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <h3 className="text-xl font-bold text-white mb-2">
+                                    Welcome, {pendingUserProfile.name || pendingAuthUser.email}!
+                                </h3>
+                                <p className="text-slate-400 text-sm">
+                                    Set up a passkey for faster, more secure sign-ins on this device and others.
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-emerald-900/20 border border-emerald-700/30 text-emerald-300 p-3 rounded-lg text-sm">
+                                    <strong>Account:</strong> {pendingAuthUser.email}<br/>
+                                    <strong>Provider:</strong> {pendingAuthUser.providerData[0]?.providerId || 'phone'}
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        setShowPasskeyPrompt(false);
+                                        setShowPasskeyRegistration(true);
+                                    }}
+                                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors font-medium"
+                                >
+                                    Set up passkey
+                                </button>
+                                
+                                <button
+                                    onClick={handlePasskeySkip}
+                                    className="w-full px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+                                >
+                                    Skip for now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 
                 {/* Passkey Registration UI */}
                 {showPasskeyRegistration && pendingAuthUser && (
@@ -1122,19 +1231,26 @@ const App: React.FC = () => {
                                             const userEmail = pendingAuthUser.email || '';
                                             const userProvider = pendingAuthUser.providerData[0]?.providerId || 'unknown';
                                             
+<<<<<<< HEAD
                                             console.log('Starting passkey verification for:', { uid, userEmail, userProvider });
                                             console.log('Functions base URL:', functionsBase);
                                             
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                             const begin = await fetch(`${functionsBase}/webauthn/login/begin`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ uid })
                                             }).then(r => r.json());
                                             
+<<<<<<< HEAD
                                             console.log('Passkey begin response:', begin);
                                             
                                             const attResp = await startAuthentication(begin);
                                             console.log('Passkey authentication response:', attResp);
+=======
+                                            const attResp = await startAuthentication(begin);
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                             
                                             const finish = await fetch(`${functionsBase}/webauthn/login/finish`, {
                                                 method: 'POST',
@@ -1147,18 +1263,29 @@ const App: React.FC = () => {
                                                 })
                                             }).then(r => r.json());
                                             
+<<<<<<< HEAD
                                             console.log('Passkey finish response:', finish);
                                             
+=======
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                             if (finish?.verified) {
                                                 // Passkey verified successfully
                                                 setShowPasskeyVerification(false);
                                                 handlePasskeyVerificationSuccess();
                                             } else {
+<<<<<<< HEAD
                                                 throw new Error(`Passkey verification failed: ${finish?.error || 'Unknown error'}`);
                                             }
                                         } catch (error) {
                                             console.error('Passkey verification error:', error);
                                             alert(`Passkey verification failed: ${error.message}. Please try again or use regular login.`);
+=======
+                                                throw new Error('Passkey verification failed');
+                                            }
+                                        } catch (error) {
+                                            console.error('Passkey verification error:', error);
+                                            alert('Passkey verification failed. Please try again.');
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                         }
                                     }}
                                     className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors font-medium"

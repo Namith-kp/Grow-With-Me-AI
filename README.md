@@ -7,7 +7,11 @@ This contains everything you need to run your app locally.
 **Prerequisites:**  Node.js
 
 
+<<<<<<< HEAD
 1. Install dependencie:
+=======
+1. Install dependencies:
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
    `npm install`
 # Grow With Me
 
@@ -18,6 +22,7 @@ This contains everything you need to run your app locally.
    ```bash
    npm install
    ```
+<<<<<<< HEAD
 3. Copy `.env.example` to `.env.local`:
    ```bash
    cp .env.example .env.local
@@ -26,6 +31,14 @@ This contains everything you need to run your app locally.
    - Get Firebase configuration from your Firebase Console
    - Get Gemini API key from Google AI Studio
    - Update `.env.local` with your values
+=======
+3. Copy Environment Variables to `.env` file:
+   
+4. Add your API keys and configuration:
+   - Get Firebase configuration from your Firebase Console
+   - Get Gemini API key from Google AI Studio
+   - Update `.env` with your values
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
 5. Start the development server:
    ```bash
@@ -46,7 +59,11 @@ The following environment variables are required:
 - `VITE_FIREBASE_CLIENT_ID`: Your Firebase client ID
 - `VITE_GEMINI_API_KEY`: Your Gemini API key
 
+<<<<<<< HEAD
 See `.env.example` for the required format.
+=======
+See above for the required format for `.env` file
+>>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
 ## Deployment to GitHub Pages
 
