@@ -1,0 +1,6 @@
+{
+  "name": "Grow With Me",
+  "description": "An AI-powered platform to connect founders with their ideal co-founders, developers, and investors. Leveraging Gemini for intelligent matching based on skills, interests, and project experience.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
