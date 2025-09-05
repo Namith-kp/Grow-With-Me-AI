@@ -728,6 +728,14 @@ export const firestoreService = {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
     },
 
+    getUserConnections: async (userId: string): Promise<User[]> => {
+        const userProfile = await firestoreService.getUserProfile(userId);
+        if (!userProfile || !userProfile.connections) {
+            return [];
+        }
+        return await firestoreService.getConnections(userProfile.connections);
+    },
+
     removeConnection: async (currentUserId: string, connectionToRemoveId: string): Promise<void> => {
         const user1Ref = db.collection('users').doc(currentUserId);
         const user2Ref = db.collection('users').doc(connectionToRemoveId);

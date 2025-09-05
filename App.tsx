@@ -74,6 +74,7 @@ import IdeasBoard from './components/IdeasBoard';
 import People from './components/People';
 import Profile from './components/Profile';
 import NotificationsPage from './components/NotificationsPage';
+import Connections from './components/Connections';
 import { ApiKeysNotice } from './components/ApiKeysNotice';
 import Header from './components/Header';
 import ChatModal from './components/ChatModal';
@@ -259,6 +260,7 @@ const App: React.FC = () => {
                 [View.NEGOTIATIONS]: 'view_profile', // Or a new action type for negotiations
                 [View.PROFILE]: 'view_profile',
                 [View.NOTIFICATIONS]: 'view_profile',
+                [View.CONNECTIONS]: 'view_profile',
             };
             
             if (actionMap[view]) {
@@ -1047,6 +1049,7 @@ const App: React.FC = () => {
                         onNavigateToIdea={(ideaId) => { setFocusedIdeaId(ideaId); navigate(View.IDEAS); }}
                         onConnect={handleConnect}
                         onMessage={handleMessageUser}
+                        setView={navigate}
                     />;
                 }
                 // Otherwise show current user's profile
@@ -1062,6 +1065,7 @@ const App: React.FC = () => {
                     onNavigateToIdea={(ideaId) => { setFocusedIdeaId(ideaId); navigate(View.IDEAS); }}
                     onConnect={handleConnect}
                     onMessage={handleMessageUser}
+                    setView={navigate}
                 />;
             case View.NOTIFICATIONS:
                 if (!userProfile) return null;
@@ -1069,6 +1073,14 @@ const App: React.FC = () => {
                     currentUser={userProfile}
                     onNavigateToView={navigate}
                     onBack={() => navigate(View.DASHBOARD)}
+                />;
+            case View.CONNECTIONS:
+                if (!userProfile) return null;
+                return <Connections 
+                    currentUser={userProfile}
+                    onBack={() => navigate(View.DASHBOARD)}
+                    onNavigateToProfile={handleViewUserProfile}
+                    onNavigateToMessages={handleMessageUser}
                 />;
             default:
                 if (!userProfile) return null;

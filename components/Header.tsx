@@ -160,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
         <>
             {/* Mobile header - Hidden when chat or negotiation is open on mobile */}
             {!isMobileChatOpen && !isMobileNegotiationOpen && (
-                <header className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm z-50 border-b border-slate-700/50 shadow-lg flex items-center h-16 px-4 justify-between">
+                <header className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900 z-50 border-b border-slate-700 shadow-lg flex items-center h-16 px-4 justify-between">
                     <div className="flex items-center">
                         {/* Show sidebar icon on tablet screens only (sm:block, hidden on xs and lg+) */}
                         <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none mr-2 sm:block hidden lg:hidden" title="Open menu">
@@ -268,7 +268,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
 
             {/* Bottom nav bar for mobile only (max-width: 640px), hides on scroll down - Hidden when chat or negotiation is open */}
             {!isMobileChatOpen && !isMobileNegotiationOpen && (
-                <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700/50 shadow-lg flex justify-between items-center h-16 px-1 sm:hidden lg:hidden gap-1 transition-transform duration-300 ${showNav ? 'translate-y-0' : 'translate-y-full'}`}>
+                <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 shadow-lg flex justify-between items-center h-16 px-1 sm:hidden lg:hidden gap-1 transition-transform duration-300 ${showNav ? 'translate-y-0' : 'translate-y-full'}`}>
                     <button onClick={() => handleNavigation(View.DASHBOARD)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.DASHBOARD ? 'text-purple-400' : 'text-neutral-300'}`}> <UserIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Dashboard</span> </button>
                     <button onClick={() => handleNavigation(View.ANALYTICS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.ANALYTICS ? 'text-purple-400' : 'text-neutral-300'}`}> <TrendingUpIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Analytics</span> </button>
                     <button onClick={() => handleNavigation(View.MESSAGES)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.MESSAGES ? 'text-purple-400' : 'text-neutral-300'}`}> <MessageSquareIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Messages</span> </button>
@@ -281,10 +281,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
             { (sidebarOpen || sidebarVisible) && (
                 <div className="fixed inset-0 z-50 lg:hidden">
                     {/* Overlay */}
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 opacity-100 pointer-events-auto" onClick={() => setSidebarOpen(false)}></div>
+                    <div className="fixed inset-0 bg-black transition-opacity duration-300 opacity-100 pointer-events-auto" onClick={() => setSidebarOpen(false)}></div>
                     {/* Sidebar with slide animation and glassmorphism gradient */}
                     <aside
-                        className={`relative w-64 bg-slate-900/95 backdrop-blur-sm border-r border-slate-700/50 shadow-lg text-white p-4 flex flex-col h-full z-50 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} pointer-events-auto`}
+                        className={`relative w-64 bg-slate-900 border-r border-slate-700 shadow-lg text-white p-4 flex flex-col h-full z-50 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} pointer-events-auto`}
                         style={{ minWidth: '16rem' }}
                     >
                         {/* Gradient and blurred circles for sidebar aesthetics */}

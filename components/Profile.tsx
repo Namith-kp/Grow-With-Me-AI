@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Role, View, Idea } from '../types';
 import AvatarAdjustModal from './AvatarAdjustModal';
 import BannerAdjustModal from './BannerAdjustModal';
-import { UserIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, CalendarIcon, BriefcaseIcon, StarIcon, HeartIcon, TargetIcon, DollarSignIcon, TrendingUpIcon, MailIcon, PhoneIcon, GlobeIcon, LinkedinIcon, GithubIcon, TwitterIcon, CameraIcon } from './icons';
+import { UserIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, CalendarIcon, BriefcaseIcon, StarIcon, HeartIcon, TargetIcon, DollarSignIcon, TrendingUpIcon, MailIcon, PhoneIcon, GlobeIcon, LinkedinIcon, GithubIcon, TwitterIcon, CameraIcon, UsersIcon } from './icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
@@ -19,6 +19,7 @@ interface ProfileProps {
     onNavigateToIdea?: (ideaId: string) => void;
     onConnect?: (user: User) => Promise<void>;
     onMessage?: (user: User) => void;
+    setView?: (view: View) => void;
 }
 
 const Profile: React.FC<ProfileProps> = ({ 
@@ -31,7 +32,8 @@ const Profile: React.FC<ProfileProps> = ({
     currentUser = null,
     onNavigateToIdea,
     onConnect,
-    onMessage
+    onMessage,
+    setView
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -46,6 +48,8 @@ const Profile: React.FC<ProfileProps> = ({
     const [bannerRemoved, setBannerRemoved] = useState(false);
     const [bannerAdjustOpen, setBannerAdjustOpen] = useState(false);
     const [pendingBanner, setPendingBanner] = useState<string | null>(null);
+    const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+    const [otherUserConnections, setOtherUserConnections] = useState<User[]>([]);
     const [isBannerExpanded, setIsBannerExpanded] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -398,6 +402,22 @@ const Profile: React.FC<ProfileProps> = ({
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
         if (isMobile) {
             setIsBannerExpanded(!isBannerExpanded);
+        }
+    };
+
+    const handleConnectionsClick = async () => {
+        if (isReadOnly && userProfile) {
+            // Fetch the other user's connections
+            try {
+                const connections = await firestoreService.getUserConnections(userProfile.id);
+                setOtherUserConnections(connections);
+                setShowConnectionsModal(true);
+            } catch (error) {
+                console.error('Error fetching user connections:', error);
+            }
+        } else if (setView) {
+            // For own profile, navigate to People tab
+            setView(View.PEOPLE);
         }
     };
 
@@ -803,51 +823,68 @@ const Profile: React.FC<ProfileProps> = ({
                         {/* Stats Section - Mobile */}
                         <div className="mt-6 sm:mt-8 mb-6 sm:mb-8">
                             <motion.div 
-                                className={`grid gap-1 sm:gap-3 ${userProfile.role === Role.Investor ? 'grid-cols-1' : 'grid-cols-3'}`}
+                                className={`grid gap-1 sm:gap-3 ${userProfile.role === Role.Investor ? 'grid-cols-2' : 'grid-cols-4'}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.7 }}
                             >
                                 <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                     whileHover={{ scale: 1.02, y: -2 }}
                                 >
-                                    <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
-                                        <StarIcon className="w-3 h-3 sm:w-5 sm:h-5 text-emerald-400" />
+                                    <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
+                                        <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400" />
                                     </div>
-                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">
+                                    <h4 className="text-xs font-semibold text-white mb-1 leading-tight">
                                         {userProfile.role === Role.Founder && 'Ideas Posted'}
                                         {userProfile.role === Role.Investor && 'Ideas Invested In'}
                                         {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
                                     </h4>
-                                    <p className="text-sm sm:text-xl font-bold text-emerald-400">{ideas.length}</p>
+                                    <p className="text-lg sm:text-2xl font-bold text-emerald-400">{ideas.length}</p>
                                 </motion.div>
                                 
                                 {userProfile.role !== Role.Investor && (
                                     <>
                                         <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                             whileHover={{ scale: 1.02, y: -2 }}
                                         >
-                                            <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
-                                                <BriefcaseIcon className="w-3 h-3 sm:w-5 sm:h-5 text-blue-400" />
+                                            <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
+                                                <BriefcaseIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
                                             </div>
-                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">Skills & Expertise</h4>
-                                            <p className="text-sm sm:text-xl font-bold text-blue-400">{userProfile.skills.length}</p>
+                                            <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Skills & Expertise</h4>
+                                            <p className="text-lg sm:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
                                         </motion.div>
                                         
                                         <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                             whileHover={{ scale: 1.02, y: -2 }}
                                         >
-                                            <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
-                                                <HeartIcon className="w-3 h-3 sm:w-5 sm:h-5 text-purple-400" />
+                                            <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
+                                                <HeartIcon className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
                                             </div>
-                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">Areas of Interest</h4>
-                                            <p className="text-sm sm:text-xl font-bold text-purple-400">{userProfile.interests.length}</p>
+                                            <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Areas of Interest</h4>
+                                            <p className="text-lg sm:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
                                         </motion.div>
                                     </>
                                 )}
+                                
+                                {/* Connections Count Card */}
+                                <motion.div 
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer aspect-square flex flex-col justify-center"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleConnectionsClick();
+                                    }}
+                                >
+                                    <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-orange-600/20 to-orange-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
+                                        <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 text-orange-400" />
+                                    </div>
+                                    <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Connections</h4>
+                                    <p className="text-lg sm:text-2xl font-bold text-orange-400">{userProfile.connections.length}</p>
+                                </motion.div>
                             </motion.div>
                         </div>
                     </div>
@@ -859,51 +896,68 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-6 lg:mb-8">
                             {/* Interactive Stats Section - span two columns on large screens */}
                             <motion.div 
-                                className={`grid gap-1 sm:gap-3 lg:gap-4 lg:col-span-2 ${userProfile.role === Role.Investor ? 'grid-cols-1' : 'grid-cols-3'}`}
+                                className={`grid gap-1 sm:gap-3 lg:gap-4 lg:col-span-2 ${userProfile.role === Role.Investor ? 'grid-cols-2' : 'grid-cols-4'}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.7 }}
                             >
                                 <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                     whileHover={{ scale: 1.02, y: -2 }}
                                 >
-                                    <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                        <StarIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-emerald-400" />
+                                    <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                        <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-emerald-400" />
                                     </div>
-                                    <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">
+                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">
                                         {userProfile.role === Role.Founder && 'Ideas Posted'}
                                         {userProfile.role === Role.Investor && 'Ideas Invested In'}
                                         {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
                                     </h4>
-                                    <p className="text-sm sm:text-xl lg:text-2xl font-bold text-emerald-400">{ideas.length}</p>
+                                    <p className="text-lg sm:text-2xl font-bold text-emerald-400">{ideas.length}</p>
                                 </motion.div>
                                 
                                 {userProfile.role !== Role.Investor && (
                                     <>
                                         <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                             whileHover={{ scale: 1.02, y: -2 }}
                                         >
-                                            <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                                <BriefcaseIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-400" />
+                                            <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                                <BriefcaseIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-400" />
                                             </div>
-                                            <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">Skills & Expertise</h4>
-                                            <p className="text-sm sm:text-xl lg:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
+                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Skills & Expertise</h4>
+                                            <p className="text-lg sm:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
                                         </motion.div>
                                         
                                         <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
                                             whileHover={{ scale: 1.02, y: -2 }}
                                         >
-                                            <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                                <HeartIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-400" />
+                                            <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                                <HeartIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-purple-400" />
                                             </div>
-                                            <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">Areas of Interest</h4>
-                                            <p className="text-sm sm:text-xl lg:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
+                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Areas of Interest</h4>
+                                            <p className="text-lg sm:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
                                         </motion.div>
                                     </>
                                 )}
+                                
+                                {/* Connections Count Card */}
+                                <motion.div 
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer aspect-square flex flex-col justify-center"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleConnectionsClick();
+                                    }}
+                                >
+                                    <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-orange-600/20 to-orange-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                        <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-orange-400" />
+                                    </div>
+                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Connections</h4>
+                                    <p className="text-lg sm:text-2xl font-bold text-orange-400">{userProfile.connections.length}</p>
+                                </motion.div>
                             </motion.div>
                         </div>
 
@@ -1452,6 +1506,55 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Floating Action Button removed for cleaner layout */}
                 </div>
             </div>
+
+            {/* Other User's Connections Modal */}
+            {showConnectionsModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gradient-to-br from-slate-900/95 to-black/95 backdrop-blur-sm border border-slate-800/50 rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                                    <UsersIcon className="w-6 h-6 text-orange-400" />
+                                    {userProfile?.name}'s Connections
+                                </h3>
+                                <p className="text-slate-400 text-sm mt-1">
+                                    {otherUserConnections.length} connection{otherUserConnections.length !== 1 ? 's' : ''}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowConnectionsModal(false)}
+                                className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800/50"
+                            >
+                                <XIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="overflow-y-auto max-h-[60vh]">
+                            {otherUserConnections.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                    {otherUserConnections.map((connection) => (
+                                        <div
+                                            key={connection.id}
+                                            className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg p-4 text-center hover:from-slate-700/50 hover:to-slate-800/50 transition-all duration-300"
+                                        >
+                                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-lg font-bold">
+                                                {getUserInitials(connection.name)}
+                                            </div>
+                                            <h4 className="text-white font-medium text-sm mb-1 truncate">{connection.name}</h4>
+                                            <p className="text-slate-400 text-xs truncate">{connection.role}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <UsersIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                                    <p className="text-slate-400">No connections yet</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </div>
     );

@@ -74,6 +74,7 @@ export enum View {
     NEGOTIATIONS = 'NEGOTIATIONS',
     PROFILE = 'PROFILE',
     NOTIFICATIONS = 'NOTIFICATIONS',
+    CONNECTIONS = 'CONNECTIONS',
 }
 
 export interface AnalyticsData {
