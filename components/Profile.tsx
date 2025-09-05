@@ -46,6 +46,7 @@ const Profile: React.FC<ProfileProps> = ({
     const [bannerRemoved, setBannerRemoved] = useState(false);
     const [bannerAdjustOpen, setBannerAdjustOpen] = useState(false);
     const [pendingBanner, setPendingBanner] = useState<string | null>(null);
+    const [isBannerExpanded, setIsBannerExpanded] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         role: Role.Founder,
@@ -390,6 +391,27 @@ const Profile: React.FC<ProfileProps> = ({
     };
     const onBannerConfirm = (base64: string) => { setBannerPreview(base64); setBannerRemoved(false); setPendingBanner(null); setBannerAdjustOpen(false); };
     const onBannerReset = () => { setBannerPreview(null); setBannerRemoved(true); };
+    
+    // Banner expand/collapse handler
+    const handleBannerClick = () => {
+        // Only allow expansion on mobile screens (sm breakpoint is 640px)
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        if (isMobile) {
+            setIsBannerExpanded(!isBannerExpanded);
+        }
+    };
+
+    // Reset banner expansion when screen size changes
+    useEffect(() => {
+        const handleResize = () => {
+            if (typeof window !== 'undefined' && window.innerWidth >= 640) {
+                setIsBannerExpanded(false);
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleConnect = async () => {
         if (!userProfile || !onConnect || !currentUser) return;
@@ -438,20 +460,12 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
             
             {/* Content */}
-            <div className="relative z-10 h-full flex flex-col pt-12 lg:pt-0"> 
+            <div className="relative z-10 h-full flex flex-col pt-16 sm:pt-20 lg:pt-0"> 
                 {/* Header */}
                 <div className="flex-shrink-0 bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border-b border-slate-800/50 shadow-2xl">
                     <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                                <motion.div 
-                                    className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700/50"
-                                    whileHover={{ scale: 1.05, rotate: 5 }}
-                                    transition={{ type: "spring", stiffness: 300 }}
-                                >
-                                    <UserIcon className="w-4 h-4 sm:w-6 sm:h-6 text-slate-400" />
-                                </motion.div>
-
+                            <div className="flex items-center justify-between w-full">
                                 {/* Avatar Adjust Modal */}
                                 <AvatarAdjustModal
                                     isOpen={adjustOpen}
@@ -459,9 +473,7 @@ const Profile: React.FC<ProfileProps> = ({
                                     onClose={handleAdjustClose}
                                     onConfirm={handleAdjustConfirm}
                                 />
-                                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                                    {isReadOnly ? `${userProfile.name}'s Profile` : 'My Profile'}
-                                </h1>
+                                <div></div> {/* Spacer */}
                             </div>
                             <BannerAdjustModal
                                 isOpen={bannerAdjustOpen}
@@ -469,53 +481,6 @@ const Profile: React.FC<ProfileProps> = ({
                                 onClose={() => { setBannerAdjustOpen(false); setPendingBanner(null); }}
                                 onConfirm={onBannerConfirm}
                             />
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                                        {!readOnly && (
-                                            !isEditing ? (
-                                                <motion.button
-                                                    onClick={() => setIsEditing(true)}
-                                                    className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-slate-700/50 to-slate-600/50 hover:from-slate-600/50 hover:to-slate-500/50 text-white rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 text-sm sm:text-base shadow-lg hover:shadow-xl"
-                                                    whileHover={{ scale: 1.05, y: -2 }}
-                                                    whileTap={{ scale: 0.95 }}
-                                                >
-                                                    <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                    <span className="hidden sm:inline">Edit Profile</span>
-                                                    <span className="sm:hidden">Edit</span>
-                                                </motion.button>
-                                            ) : (
-                                                <div className="flex items-center space-x-2">
-                                        <motion.button
-                                            onClick={handleCancel}
-                                                        className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-slate-700/50 to-slate-600/50 hover:from-slate-600/50 hover:to-slate-500/50 text-white rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 text-sm sm:text-base whitespace-nowrap shadow-lg hover:shadow-xl"
-                                                        whileHover={{ scale: 1.05, y: -2 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                    >
-                                                        <span className="hidden sm:inline">Cancel</span>
-                                                        <span className="sm:hidden">Cancel</span>
-                                        </motion.button>
-                                        <motion.button
-                                            onClick={handleSave}
-                                            disabled={loading}
-                                                        className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 hover:from-emerald-500/80 hover:to-emerald-400/80 text-white rounded-xl transition-all duration-300 border border-emerald-600/50 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base whitespace-nowrap shadow-lg hover:shadow-xl"
-                                                        whileHover={{ scale: loading ? 1 : 1.05, y: loading ? 0 : -2 }}
-                                                        whileTap={{ scale: loading ? 1 : 0.95 }}
-                                                    >
-                                                        <SaveIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                                        <span className="hidden sm:inline">{loading ? 'Saving...' : 'Save Changes'}</span>
-                                                        <span className="sm:hidden">{loading ? 'Saving' : 'Save'}</span>
-                                        </motion.button>
-                                                </div>
-                                            )
-                                        )}
-                                    <motion.button
-                                    onClick={onBack}
-                                    className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800/50"
-                                    whileHover={{ scale: 1.05, rotate: 5 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <XIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                                    </motion.button>
-                            </div>
                     </div>
                 </div>
 
@@ -547,16 +512,71 @@ const Profile: React.FC<ProfileProps> = ({
                 </AnimatePresence>
 
                 {/* Profile Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 lg:p-4">
+                <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6 mt-2 sm:mt-4">
+                {/* Back Arrow - Above banner */}
+                <motion.button
+                    onClick={onBack}
+                    className="absolute top-2 left-2 z-10 text-slate-300 hover:text-white transition-colors p-1.5 sm:p-2 rounded-lg hover:bg-black/50 backdrop-blur-sm"
+                    whileHover={{ scale: 1.05, x: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </motion.button>
+
+                {/* Edit Button - Above banner */}
+                {!readOnly && (
+                    <div className="absolute top-2 right-2 z-10">
+                        {!isEditing ? (
+                            <motion.button
+                                onClick={() => setIsEditing(true)}
+                                className="p-2 sm:p-3 bg-gradient-to-r from-slate-700/50 to-slate-600/50 hover:from-slate-600/50 hover:to-slate-500/50 text-white rounded-full transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 shadow-lg hover:shadow-xl backdrop-blur-sm"
+                                whileHover={{ scale: 1.1, y: -2 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </motion.button>
+                        ) : (
+                            <div className="flex items-center space-x-2">
+                                <motion.button
+                                    onClick={handleCancel}
+                                    className="p-2 sm:p-3 bg-gradient-to-r from-slate-700/50 to-slate-600/50 hover:from-slate-600/50 hover:to-slate-500/50 text-white rounded-full transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 shadow-lg hover:shadow-xl backdrop-blur-sm"
+                                    whileHover={{ scale: 1.1, y: -2 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <XIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </motion.button>
+                                <motion.button
+                                    onClick={handleSave}
+                                    disabled={loading}
+                                    className="p-2 sm:p-3 bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 hover:from-emerald-500/80 hover:to-emerald-400/80 text-white rounded-full transition-all duration-300 border border-emerald-600/50 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl backdrop-blur-sm"
+                                    whileHover={{ scale: loading ? 1 : 1.1, y: loading ? 0 : -2 }}
+                                    whileTap={{ scale: loading ? 1 : 0.95 }}
+                                >
+                                    <SaveIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </motion.button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Hero Section */}
                 <motion.div 
-                        className="relative mb-4 sm:mb-6"
+                        className="relative mb-3 sm:mb-4 lg:mb-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                 >
-                        {/* Banner image or gradient */}
-                        <div className="absolute inset-0 rounded-3xl overflow-hidden border border-slate-800/50">
+                        {/* Banner image or gradient - Expandable on mobile */}
+                        <motion.div 
+                            className={`relative rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-800/50 cursor-pointer sm:cursor-default transition-all duration-300 ${
+                                isBannerExpanded ? 'h-48' : 'h-24'
+                            } sm:h-44 lg:h-52`}
+                            onClick={handleBannerClick}
+                            whileHover={{ scale: 1.01 }}
+                            transition={{ duration: 0.3 }}
+                        >
                             {bannerPreview && !bannerRemoved ? (
                                 <img src={bannerPreview} alt="banner" className="w-full h-full object-cover" />
                             ) : (
@@ -566,20 +586,36 @@ const Profile: React.FC<ProfileProps> = ({
                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.1),transparent_50%)]"></div>
                                 </>
                             )}
-                        </div>
+                            
+                            {/* Floating Elements removed for cleaner read-only look */}
+                            <div className="absolute top-1/2 right-8 w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
+                            
+                            
+
+                            {/* Mobile expand/collapse indicator */}
+                            <div className="absolute bottom-2 right-2 bg-black/50 rounded-full p-1.5 sm:hidden">
+                                <motion.div
+                                    animate={{ rotate: isBannerExpanded ? 180 : 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </motion.div>
+                            </div>
+                        </motion.div>
                         
-                        {/* Floating Elements removed for cleaner read-only look */}
-                        <div className="absolute top-1/2 right-8 w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
                         
-                        <div className="relative p-3 sm:p-4 lg:p-8">
-                            <div className="flex flex-col lg:flex-row items-center lg:items-start space-y-4 lg:space-y-0 lg:space-x-6">
+                        {/* Profile Content - Avatar left, content right layout */}
+                        <div className="px-2 sm:px-3 lg:px-6 xl:px-8 mt-2 sm:mt-3">
+                            <div className="flex flex-row items-start space-x-4 sm:space-x-6">
                                 {/* Avatar */}
                                 <motion.div 
                                     className="relative"
                                     whileHover={{ scale: 1.05 }}
                                     transition={{ type: "spring", stiffness: 300 }}
                                 >
-                                    <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center border-2 border-slate-600/50 shadow-2xl overflow-hidden">
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center border-2 border-slate-600/50 shadow-2xl overflow-hidden">
                                         {avatarSrc && !avatarLoadFailed ? (
                                             <img 
                                                 src={avatarSrc}
@@ -596,7 +632,7 @@ const Profile: React.FC<ProfileProps> = ({
                                             />
                                         ) : (
                                             <div className="flex items-center justify-center w-full h-full">
-                                                <span className="text-white/80 text-4xl sm:text-5xl lg:text-6xl font-bold">
+                                                <span className="text-white/80 text-xl sm:text-2xl lg:text-3xl font-bold">
                                                     {getUserInitials(userProfile.name)}
                                                 </span>
                                     </div>
@@ -627,40 +663,41 @@ const Profile: React.FC<ProfileProps> = ({
                                     </div>
                                 )}
 
-                                {/* Profile Info */}
-                                <div className="flex-1 text-center lg:text-left">
+                                {/* Profile Info - Left aligned beside avatar */}
+                                <div className="flex-1 text-left space-y-2">
                                     <motion.h2 
-                                        className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
+                                        className="text-xl sm:text-2xl lg:text-3xl font-bold text-white"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.2 }}
                                     >
                                         {userProfile.name}
                                     </motion.h2>
+                                    
+                                    {/* Role and Location - Left aligned */}
                                     <motion.div 
-                                        className="flex flex-col sm:flex-row items-center sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
+                                        className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-slate-300"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.3 }}
                                     >
-                                        <div className="flex items-center space-x-2 text-slate-300">
+                                        <div className="flex items-center space-x-1.5">
                                             <BriefcaseIcon className="w-4 h-4" />
                                             <span className="text-sm sm:text-base">{userProfile.role}</span>
                                         </div>
-                                        <div className="flex items-center space-x-2 text-slate-300">
+                                        <div className="flex items-center space-x-1.5">
                                             <MapPinIcon className="w-4 h-4" />
                                             <span className="text-sm sm:text-base">{userProfile.location}</span>
                                         </div>
-                                        {/* DOB removed from banner */}
                                     </motion.div>
-                                    
+
                                     {/* Contact info: only show to connected users */}
                                     {readOnly && currentUser && userProfile.id !== currentUser.id && (
                                         <>
                                             {/* Show only when connected. Fallback to direct connections array in case status listener lags */}
                                             {(connectionStatus === 'connected' || (userProfile.connections || []).includes(currentUser.id)) && (
                                                 <motion.div 
-                                                    className="flex flex-col items-center lg:items-start justify-center lg:justify-start gap-1 mt-2 text-slate-300"
+                                                    className="flex flex-col items-start gap-1 mt-2 text-slate-300"
                                                     initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ delay: 0.4 }}
@@ -685,7 +722,7 @@ const Profile: React.FC<ProfileProps> = ({
                                     {/* Signed-in user's own email on banner */}
                                     {!readOnly && (
                                         <motion.div 
-                                            className="flex items-center justify-center lg:justify-start gap-3 mt-2 text-slate-300"
+                                            className="flex items-center gap-3 mt-2 text-slate-300"
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: 0.35 }}
@@ -697,116 +734,247 @@ const Profile: React.FC<ProfileProps> = ({
                                 </div>
                             </div>
                         </div>
-                                    </motion.div>
+                    </motion.div>
 
 
-
-                    {/* Connect & Message Buttons */}
-                    {readOnly && currentUser && userProfile.id !== currentUser.id && (
-                                    <motion.div 
-                            className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4"
-                            initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                        >
-                            <motion.button
-                                onClick={handleConnect}
-                                disabled={isConnecting || connectionStatus === 'connected' || connectionStatus === 'requested'}
-                                className={cn(
-                                    "flex-1 flex items-center justify-center space-x-3 px-6 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-md",
-                                    connectionStatus === 'connected' 
-                                        ? "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 cursor-default hover:shadow-emerald-500/10"
-                                        : connectionStatus === 'requested'
-                                        ? "bg-gradient-to-r from-amber-700/30 to-amber-600/30 text-amber-200 border border-amber-600/40 cursor-default hover:shadow-amber-500/10"
-                                        : "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 hover:from-emerald-600/30 hover:to-emerald-500/30 hover:shadow-emerald-500/10"
-                                )}
-                                whileHover={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 1.02, y: -2 }}
-                                whileTap={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 0.98 }}
+                    {/* Mobile: Connect & Message Buttons above stats */}
+                    <div className="lg:hidden">
+                        {/* Connect & Message Buttons */}
+                        {readOnly && currentUser && userProfile.id !== currentUser.id && (
+                            <motion.div 
+                                className="flex flex-row gap-2 sm:gap-3 mb-3 sm:mb-4"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
                             >
-                                {isConnecting ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        <span>Sending...</span>
-                                    </>
-                                ) : connectionStatus === 'connected' ? (
-                                    <>
-                                        <div className="w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center">
-                                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                                            </div>
-                                        <span>Connected</span>
-                                    </>
-                                ) : connectionStatus === 'requested' ? (
-                                    <>
-                                        <div className="w-5 h-5 bg-yellow-400 rounded-full animate-pulse"></div>
-                                        <span>Request Sent</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-                                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                                        </div>
-                                        <span>Connect</span>
-                                    </>
-                                )}
-                            </motion.button>
-                            
-                            <motion.button
-                                onClick={handleMessage}
-                                className="flex-1 flex items-center justify-center space-x-3 px-6 py-4 rounded-2xl font-semibold transition-all duration-300 border shadow-lg hover:shadow-xl backdrop-blur-md bg-gradient-to-r from-slate-700/30 to-slate-600/30 text-slate-200 border-slate-600/40 hover:border-slate-500/50"
-                                whileHover={{ scale: 1.02, y: -2 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <MailIcon className="w-5 h-5" />
-                                <span>Message</span>
-                            </motion.button>
-                                    </motion.div>
-                    )}
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                        {/* Left Column */}
-                        <div className="space-y-4 sm:space-y-6">
-                            {/* Interactive Stats Section (spans both columns on large screens, placed above via separate block below) */}
-                            <div className="lg:col-span-2 hidden"></div>
-                                {/* Interactive Stats Section - span two columns on large screens */}
-                                    <motion.div 
-                                    className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:col-span-2"
-                                    initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.7 }}
+                                <motion.button
+                                    onClick={handleConnect}
+                                    disabled={isConnecting || connectionStatus === 'connected' || connectionStatus === 'requested'}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center space-x-2 sm:space-x-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-md text-sm sm:text-base",
+                                        connectionStatus === 'connected' 
+                                            ? "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 cursor-default hover:shadow-emerald-500/10"
+                                            : connectionStatus === 'requested'
+                                            ? "bg-gradient-to-r from-amber-700/30 to-amber-600/30 text-amber-200 border border-amber-600/40 cursor-default hover:shadow-amber-500/10"
+                                            : "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 hover:from-emerald-600/30 hover:to-emerald-500/30 hover:shadow-emerald-500/10"
+                                    )}
+                                    whileHover={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 1.02, y: -2 }}
+                                    whileTap={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 0.98 }}
                                 >
-                                    <motion.div 
-                                        className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-3 sm:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
-                                        whileHover={{ scale: 1.02, y: -2 }}
+                                    {isConnecting ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span>Sending...</span>
+                                        </>
+                                    ) : connectionStatus === 'connected' ? (
+                                        <>
+                                            <div className="w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center">
+                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                            </div>
+                                            <span>Connected</span>
+                                        </>
+                                    ) : connectionStatus === 'requested' ? (
+                                        <>
+                                            <div className="w-5 h-5 bg-yellow-400 rounded-full animate-pulse"></div>
+                                            <span>Request Sent</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                            </div>
+                                            <span>Connect</span>
+                                        </>
+                                    )}
+                                </motion.button>
+                                
+                                <motion.button
+                                    onClick={handleMessage}
+                                    className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 border shadow-lg hover:shadow-xl backdrop-blur-md bg-gradient-to-r from-slate-700/30 to-slate-600/30 text-slate-200 border-slate-600/40 hover:border-slate-500/50 text-sm sm:text-base"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <MailIcon className="w-5 h-5" />
+                                    <span>Message</span>
+                                </motion.button>
+                            </motion.div>
+                        )}
+
+                        {/* Stats Section - Mobile */}
+                        <div className="mt-6 sm:mt-8 mb-6 sm:mb-8">
+                            <motion.div 
+                                className={`grid gap-1 sm:gap-3 ${userProfile.role === Role.Investor ? 'grid-cols-1' : 'grid-cols-3'}`}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.7 }}
+                            >
+                                <motion.div 
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                >
+                                    <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
+                                        <StarIcon className="w-3 h-3 sm:w-5 sm:h-5 text-emerald-400" />
+                                    </div>
+                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">
+                                        {userProfile.role === Role.Founder && 'Ideas Posted'}
+                                        {userProfile.role === Role.Investor && 'Ideas Invested In'}
+                                        {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
+                                    </h4>
+                                    <p className="text-sm sm:text-xl font-bold text-emerald-400">{ideas.length}</p>
+                                </motion.div>
+                                
+                                {userProfile.role !== Role.Investor && (
+                                    <>
+                                        <motion.div 
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                        >
+                                            <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
+                                                <BriefcaseIcon className="w-3 h-3 sm:w-5 sm:h-5 text-blue-400" />
+                                            </div>
+                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">Skills & Expertise</h4>
+                                            <p className="text-sm sm:text-xl font-bold text-blue-400">{userProfile.skills.length}</p>
+                                        </motion.div>
+                                        
+                                        <motion.div 
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                        >
+                                            <div className="w-6 h-6 sm:w-10 sm:h-10 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2">
+                                                <HeartIcon className="w-3 h-3 sm:w-5 sm:h-5 text-purple-400" />
+                                            </div>
+                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1">Areas of Interest</h4>
+                                            <p className="text-sm sm:text-xl font-bold text-purple-400">{userProfile.interests.length}</p>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </motion.div>
+                        </div>
+                    </div>
+
+
+                    {/* Large Screen Layout */}
+                    <div className="hidden lg:grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
+                        {/* Left Column - Stats */}
+                        <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-6 lg:mb-8">
+                            {/* Interactive Stats Section - span two columns on large screens */}
+                            <motion.div 
+                                className={`grid gap-1 sm:gap-3 lg:gap-4 lg:col-span-2 ${userProfile.role === Role.Investor ? 'grid-cols-1' : 'grid-cols-3'}`}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.7 }}
+                            >
+                                <motion.div 
+                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                >
+                                    <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                        <StarIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-emerald-400" />
+                                    </div>
+                                    <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">
+                                        {userProfile.role === Role.Founder && 'Ideas Posted'}
+                                        {userProfile.role === Role.Investor && 'Ideas Invested In'}
+                                        {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
+                                    </h4>
+                                    <p className="text-sm sm:text-xl lg:text-2xl font-bold text-emerald-400">{ideas.length}</p>
+                                </motion.div>
+                                
+                                {userProfile.role !== Role.Investor && (
+                                    <>
+                                        <motion.div 
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                        >
+                                            <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                                <BriefcaseIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-400" />
+                                            </div>
+                                            <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">Skills & Expertise</h4>
+                                            <p className="text-sm sm:text-xl lg:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
+                                        </motion.div>
+                                        
+                                        <motion.div 
+                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-1.5 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                        >
+                                            <div className="w-6 h-6 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
+                                                <HeartIcon className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-400" />
+                                            </div>
+                                            <h4 className="text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-white mb-1">Areas of Interest</h4>
+                                            <p className="text-sm sm:text-xl lg:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </motion.div>
+                        </div>
+
+                        {/* Right Column - Connect & Message Buttons */}
+                        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+                            {/* Connect & Message Buttons */}
+                            {readOnly && currentUser && userProfile.id !== currentUser.id && (
+                                <motion.div 
+                                    className="flex flex-col gap-2 sm:gap-3 lg:gap-4"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.5 }}
+                                >
+                                    <motion.button
+                                        onClick={handleConnect}
+                                        disabled={isConnecting || connectionStatus === 'connected' || connectionStatus === 'requested'}
+                                        className={cn(
+                                            "flex-1 flex items-center justify-center space-x-2 sm:space-x-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-md text-sm sm:text-base",
+                                            connectionStatus === 'connected' 
+                                                ? "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 cursor-default hover:shadow-emerald-500/10"
+                                                : connectionStatus === 'requested'
+                                                ? "bg-gradient-to-r from-amber-700/30 to-amber-600/30 text-amber-200 border border-amber-600/40 cursor-default hover:shadow-amber-500/10"
+                                                : "bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-200 border border-emerald-600/40 hover:from-emerald-600/30 hover:to-emerald-500/30 hover:shadow-emerald-500/10"
+                                        )}
+                                        whileHover={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 1.02, y: -2 }}
+                                        whileTap={{ scale: connectionStatus === 'connected' || connectionStatus === 'requested' ? 1 : 0.98 }}
                                     >
-                                        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
-                                            <StarIcon className="w-6 h-6 text-emerald-400" />
-                                        </div>
-                                        <h4 className="text-lg font-semibold text-white mb-1">Ideas Posted</h4>
-                                        <p className="text-2xl font-bold text-emerald-400">{ideas.length}</p>
-                                    </motion.div>
+                                        {isConnecting ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                <span>Sending...</span>
+                                            </>
+                                        ) : connectionStatus === 'connected' ? (
+                                            <>
+                                                <div className="w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center">
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                </div>
+                                                <span>Connected</span>
+                                            </>
+                                        ) : connectionStatus === 'requested' ? (
+                                            <>
+                                                <div className="w-5 h-5 bg-yellow-400 rounded-full animate-pulse"></div>
+                                                <span>Request Sent</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                </div>
+                                                <span>Connect</span>
+                                            </>
+                                        )}
+                                    </motion.button>
                                     
-                                    <motion.div 
-                                        className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-3 sm:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
+                                    <motion.button
+                                        onClick={handleMessage}
+                                        className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 border shadow-lg hover:shadow-xl backdrop-blur-md bg-gradient-to-r from-slate-700/30 to-slate-600/30 text-slate-200 border-slate-600/40 hover:border-slate-500/50 text-sm sm:text-base"
                                         whileHover={{ scale: 1.02, y: -2 }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
-                                        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-3">
-                                            <BriefcaseIcon className="w-6 h-6 text-blue-400" />
-                                </div>
-                                        <h4 className="text-lg font-semibold text-white mb-1">Skills & Expertise</h4>
-                                        <p className="text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
-                                    </motion.div>
-                                    
-                                    <motion.div 
-                                        className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-3 sm:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300"
-                                        whileHover={{ scale: 1.02, y: -2 }}
-                                    >
-                                        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-xl flex items-center justify-center mb-3">
-                                            <HeartIcon className="w-6 h-6 text-purple-400" />
-                            </div>
-                                        <h4 className="text-lg font-semibold text-white mb-1">Areas of Interest</h4>
-                                        <p className="text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
-                                    </motion.div>
-                </motion.div>
+                                        <MailIcon className="w-5 h-5" />
+                                        <span>Message</span>
+                                    </motion.button>
+                                </motion.div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
+                    {/* Left Column */}
+                        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
 
                         {/* Ideas Section - moved up to fill left column gap in read-only */}
                         {readOnly && (
@@ -831,41 +999,41 @@ const Profile: React.FC<ProfileProps> = ({
                                                 <span className="ml-3 text-slate-400">Loading ideas...</span>
                                 </div>
                                         ) : ideas.length > 0 ? (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-1.5 sm:gap-3 lg:gap-4">
                                                 {ideas.map((idea, index) => (
                                                     <motion.div
                                             key={idea.id}
-                                                        className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-3 sm:p-4 hover:border-slate-600/70 hover:shadow-xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer"
+                                                        className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 hover:border-slate-600/70 hover:shadow-xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer"
                                                         initial={{ opacity: 0, y: 20 }}
                                                         animate={{ opacity: 1, y: 0 }}
                                                         transition={{ delay: index * 0.1 }}
                                                         whileHover={{ scale: 1.02, y: -2 }}
                                                         onClick={() => onNavigateToIdea?.(idea.id)}
                                                     >
-                                                        <div className="flex items-start justify-between mb-2">
-                                                            <h4 className="text-white font-semibold text-sm sm:text-base line-clamp-2">
+                                                        <div className="flex items-start justify-between mb-1 sm:mb-2">
+                                                            <h4 className="text-white font-semibold text-xs sm:text-sm lg:text-base line-clamp-2 flex-1 pr-1">
                                                                 {idea.title || 'Untitled Idea'}
                                                             </h4>
-                                                            <div className="flex items-center space-x-1 text-slate-400 text-xs">
-                                                                <StarIcon className="w-3 h-3" />
+                                                            <div className="flex items-center space-x-0.5 sm:space-x-1 text-slate-400 text-xs flex-shrink-0">
+                                                                <StarIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                                                 <span>{(idea.likes || []).length || 0}</span>
                                                 </div>
                                             </div>
-                                                        <p className="text-slate-300 text-xs sm:text-sm line-clamp-3 mb-2">
+                                                        <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 mb-1 sm:mb-2">
                                                             {idea.description || 'No description available'}
                                                         </p>
-                                                        <div className="flex flex-wrap gap-1 mb-2">
-                                                            {(idea.tags || []).slice(0, 3).map((tag, tagIndex) => (
+                                                        <div className="flex flex-wrap gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+                                                            {(idea.tags || []).slice(0, 2).map((tag, tagIndex) => (
                                                                 <span 
                                                                     key={tagIndex}
-                                                                    className="bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-300 px-2 py-1 rounded-full text-xs border border-emerald-600/30"
+                                                                    className="bg-gradient-to-r from-emerald-700/30 to-emerald-600/30 text-emerald-300 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs border border-emerald-600/30"
                                                                 >
                                                                     {tag}
                                                                 </span>
                                                             ))}
-                                                            {(idea.tags || []).length > 3 && (
-                                                                <span className="text-slate-500 text-xs px-2 py-1">
-                                                                    +{(idea.tags || []).length - 3} more
+                                                            {(idea.tags || []).length > 2 && (
+                                                                <span className="text-slate-500 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1">
+                                                                    +{(idea.tags || []).length - 2} more
                                                                 </span>
                                                 )}
                                             </div>
@@ -912,7 +1080,7 @@ const Profile: React.FC<ProfileProps> = ({
                                 </div>
                                         Basic Information
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
                                         <div>
                                             <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Full Name</label>
                                         {isEditing ? (
@@ -921,7 +1089,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="name"
                                                 value={formData.name}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                             />
                                         ) : (
                                                 <div className="flex flex-wrap gap-2">
@@ -939,7 +1107,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="role"
                                                 value={formData.role}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
                                             >
                                                 {Object.values(Role).map(role => (
                                                     <option key={role} value={role}>{role}</option>
@@ -962,7 +1130,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="location"
                                                 value={formData.location}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                             />
                                         ) : (
                                                 <div className="flex flex-wrap gap-2">
@@ -981,7 +1149,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                     name="dateOfBirth"
                                                     value={formData.dateOfBirth}
                                                     onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
                                                 />
                                                 </div>
                                             )}
@@ -992,7 +1160,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="gender"
                                                 value={formData.gender}
                                                 onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
                                             >
                                                         <option value="">Select Gender</option>
                                                 <option value="Male">Male</option>
@@ -1009,18 +1177,20 @@ const Profile: React.FC<ProfileProps> = ({
                                                     name="phone"
                                                     value={formData.phone}
                                                     onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
                                                     placeholder="e.g., +1 555 123 4567"
                                                 />
-                                            </div>
-                                        )}
                                     </div>
+                                )}
+                            </div>
                         </motion.div>
                                 )}
 
                             </div>
 
-                        <div className="space-y-4 sm:space-y-6">
+                        {/* Skills & Experience and Interests & Preferences - Hidden for Investors */}
+                        {userProfile.role !== Role.Investor && (
+                            <div className="space-y-4 sm:space-y-6">
                                 {/* Skills & Experience */}
                             <motion.div 
                                     className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-3 sm:p-4 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10"
@@ -1043,7 +1213,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="skills"
                                                 value={formData.skills}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                 placeholder="e.g., React, Product Management, Sales"
                                             />
                                         ) : (
@@ -1107,7 +1277,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="interests"
                                                 value={formData.interests}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                 placeholder="e.g., AI, FinTech, Sustainable Tech"
                                             />
                                         ) : (
@@ -1148,6 +1318,8 @@ const Profile: React.FC<ProfileProps> = ({
                                     </div>
                                 </div>
                             </motion.div>
+                            </div>
+                        )}
 
                         {/* Investor Specific Information */}
                         {userProfile.role === Role.Investor && userProfile.investorProfile && (
@@ -1172,7 +1344,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                 name="interestedDomains"
                                                 value={formData.interestedDomains}
                                                 onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                 placeholder="e.g., SaaS, FinTech, HealthTech"
                                             />
                                         ) : (
@@ -1207,17 +1379,17 @@ const Profile: React.FC<ProfileProps> = ({
                                                     <p className="text-white bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4 text-sm sm:text-base">{userProfile.investorProfile.investmentExperience}</p>
                                         )}
                                     </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
                                                 <div>
                                                     <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Budget Range</label>
                                             {isEditing ? (
-                                                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                                        <div className="flex flex-col sm:flex-row space-y-1.5 sm:space-y-0 sm:space-x-2">
                                                     <input
                                                         type="number"
                                                         name="minBudget"
                                                         value={formData.minBudget}
                                                         onChange={handleChange}
-                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                         placeholder="Min"
                                                     />
                                                     <input
@@ -1225,7 +1397,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                         name="maxBudget"
                                                         value={formData.maxBudget}
                                                         onChange={handleChange}
-                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                         placeholder="Max"
                                                     />
                                                 </div>
@@ -1236,13 +1408,13 @@ const Profile: React.FC<ProfileProps> = ({
                                                 <div>
                                                     <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Equity Range</label>
                                             {isEditing ? (
-                                                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                                        <div className="flex flex-col sm:flex-row space-y-1.5 sm:space-y-0 sm:space-x-2">
                                                     <input
                                                         type="number"
                                                         name="minEquity"
                                                         value={formData.minEquity}
                                                         onChange={handleChange}
-                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                         placeholder="Min %"
                                                     />
                                                     <input
@@ -1250,7 +1422,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                         name="maxEquity"
                                                         value={formData.maxEquity}
                                                         onChange={handleChange}
-                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
                                                         placeholder="Max %"
                                                     />
                                                 </div>
@@ -1262,11 +1434,9 @@ const Profile: React.FC<ProfileProps> = ({
                                 </div>
                             </motion.div>
                         )}
-                            </div>
 
                         {/* Ideas Section - Show based on user role (moved up; removed here) */}
-                                </div>
-                                </div>
+                    </div>
 
                     {error && (
                         <motion.div 
@@ -1277,12 +1447,12 @@ const Profile: React.FC<ProfileProps> = ({
                         >
                             {error}
                         </motion.div>
-                                                )}
-                                            </div>
+                    )}
 
                 {/* Floating Action Button removed for cleaner layout */}
-                                        </div>
-
+                </div>
+            </div>
+            </div>
         </div>
     );
 };

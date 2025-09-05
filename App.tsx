@@ -178,8 +178,10 @@ const App: React.FC = () => {
             timestamp: new Date().toISOString(),
             stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
         });
+        console.log('About to call setView with:', targetView);
         setError(null);
         setView(targetView);
+        console.log('setView called successfully');
         
         // Safety mechanism: reset passkey flow state when user manually navigates
         if (isInPasskeyFlow && targetView !== View.AUTH) {
@@ -931,9 +933,13 @@ const App: React.FC = () => {
                             onRemoveConnection={handleRemoveConnection}
                         />;
             case View.PROFILE:
+                console.log('Rendering Profile view');
+                console.log('userProfile:', userProfile);
+                console.log('selectedUserForProfile:', selectedUserForProfile);
                 if (!userProfile) return null;
                 // If viewing another user's profile, show their profile in read-only mode
                 if (selectedUserForProfile && selectedUserForProfile.id !== userProfile.id) {
+                    console.log('Rendering selected user profile');
                     return <Profile 
                         userProfile={selectedUserForProfile}
                         onUpdateProfile={handleProfileUpdate}
@@ -951,6 +957,7 @@ const App: React.FC = () => {
                     />;
                 }
                 // Otherwise show current user's profile
+                console.log('Rendering current user profile');
                 return <Profile 
                     userProfile={userProfile}
                     onUpdateProfile={handleProfileUpdate}
@@ -1003,6 +1010,7 @@ const App: React.FC = () => {
                         onLogout={handleLogout} 
                         isMobileChatOpen={isMobileChatOpen}
                         isMobileNegotiationOpen={isMobileNegotiationOpen}
+                        onClearSelectedUser={() => setSelectedUserForProfile(null)}
                     />
                 )}
                 <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH && view !== View.ONBOARDING) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS || view === View.PROFILE || view === View.NOTIFICATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>

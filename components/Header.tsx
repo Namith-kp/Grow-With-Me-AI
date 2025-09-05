@@ -12,6 +12,7 @@ interface HeaderProps {
     onLogout: () => void;
     isMobileChatOpen?: boolean;
     isMobileNegotiationOpen?: boolean;
+    onClearSelectedUser?: () => void;
 }
 
 const NavLink: React.FC<{
@@ -41,13 +42,16 @@ const NavLink: React.FC<{
     );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, isMobileChatOpen = false, isMobileNegotiationOpen = false }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, isMobileChatOpen = false, isMobileNegotiationOpen = false, onClearSelectedUser }) => {
     const [isMenuOpen, setMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarVisible, setSidebarVisible] = useState(false);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const showNav = useHideOnScroll();
     const menuRef = useRef<HTMLDivElement>(null);
+    const desktopMenuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
+    const mobileSidebarMenuRef = useRef<HTMLDivElement>(null);
 
     const handleNavigation = (targetView: View) => {
         if (userProfile) {
@@ -85,7 +89,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const isInsideMobileMenu = menuRef.current && menuRef.current.contains(target);
+            const isInsideDesktopMenu = desktopMenuRef.current && desktopMenuRef.current.contains(target);
+            const isInsideMobileHeaderMenu = mobileMenuRef.current && mobileMenuRef.current.contains(target);
+            const isInsideMobileSidebarMenu = mobileSidebarMenuRef.current && mobileSidebarMenuRef.current.contains(target);
+            
+            if (!isInsideMobileMenu && !isInsideDesktopMenu && !isInsideMobileHeaderMenu && !isInsideMobileSidebarMenu) {
                 setMenuOpen(false);
             }
         };
@@ -218,29 +228,37 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             
                             {/* Dropdown menu for top header avatar */}
                             {isMenuOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 z-50" style={{ display: 'block', opacity: 1, transform: 'scale(1)' }}>
-                                    <a 
-                                        href="#" 
+                                <div ref={mobileMenuRef} className="absolute top-full right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 z-50" style={{ display: 'block', opacity: 1, transform: 'scale(1)' }}>
+                                    <button 
                                         onClick={(e) => { 
                                             e.preventDefault(); 
+                                            e.stopPropagation();
+                                            console.log('Mobile Header Profile button clicked');
+                                            console.log('Current view:', currentView);
+                                            console.log('About to call onClearSelectedUser');
+                                            onClearSelectedUser?.();
+                                            console.log('About to call setView with View.PROFILE');
                                             setView(View.PROFILE); 
+                                            console.log('About to close menu');
                                             setMenuOpen(false); 
+                                            console.log('Mobile Header Profile button click completed');
                                         }} 
-                                        className="block px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
+                                        className="block w-full text-left px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
                                     >
                                         My Profile
-                                    </a>
-                                    <a 
-                                        href="#" 
+                                    </button>
+                                    <button 
                                         onClick={(e) => { 
                                             e.preventDefault(); 
+                                            e.stopPropagation();
+                                            console.log('Mobile Logout button clicked');
                                             onLogout(); 
                                             setMenuOpen(false); 
                                         }} 
-                                        className="block px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
+                                        className="block w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
                                     >
                                         <LogOutIcon className="w-4 h-4"/> Logout
-                                    </a>
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -295,7 +313,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         </nav>
                         <div className="mt-auto">
                             <div className="relative">
-                                <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={() => setMenuOpen(!isMenuOpen)}>
+                                <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('Mobile sidebar profile avatar clicked, current menu state:', isMenuOpen);
+                                    setMenuOpen(!isMenuOpen);
+                                }}>
                                     {(() => {
                                         const safeUrl = getSafeAvatarUrl(userProfile);
                                         if (safeUrl) {
@@ -313,11 +336,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                     </div>
                                 </div>
                                 {isMenuOpen && (
-                                    <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm">
-                                        <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
-                                        <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
+                                    <div ref={mobileSidebarMenuRef} className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm">
+                                        <button onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            e.stopPropagation(); 
+                                            console.log('Mobile Sidebar Profile button clicked');
+                                            console.log('Current view:', currentView);
+                                            console.log('About to call onClearSelectedUser');
+                                            onClearSelectedUser?.(); 
+                                            console.log('About to call setView with View.PROFILE');
+                                            setView(View.PROFILE); 
+                                            console.log('About to close menu');
+                                            setMenuOpen(false); 
+                                            console.log('Mobile Sidebar Profile button click completed');
+                                        }} className="block w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</button>
+                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('Sidebar Logout button clicked'); onLogout(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
                                             <LogOutIcon className="w-4 h-4"/> Logout
-                                        </a>
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -367,7 +402,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                 </nav>
                 <div className="mt-auto">
                     <div className="relative">
-                        <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={() => setMenuOpen(!isMenuOpen)}>
+                        <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Desktop profile avatar clicked, current menu state:', isMenuOpen);
+                            setMenuOpen(!isMenuOpen);
+                        }}>
                             {(() => {
                                 const safeUrl = getSafeAvatarUrl(userProfile);
                                 if (safeUrl) {
@@ -385,29 +425,37 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             </div>
                         </div>
                         {isMenuOpen && (
-                            <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
-                                <a 
-                                    href="#" 
+                            <div ref={desktopMenuRef} className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
+                                <button 
                                     onClick={(e) => { 
                                         e.preventDefault(); 
+                                        e.stopPropagation();
+                                        console.log('Desktop Profile button clicked');
+                                        console.log('Current view:', currentView);
+                                        console.log('About to call onClearSelectedUser');
+                                        onClearSelectedUser?.();
+                                        console.log('About to call setView with View.PROFILE');
                                         setView(View.PROFILE); 
+                                        console.log('About to close menu');
                                         setMenuOpen(false); 
+                                        console.log('Desktop Profile button click completed');
                                     }} 
-                                    className="block px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
+                                    className="block w-full text-left px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
                                 >
                                     My Profile
-                                </a>
-                                <a 
-                                    href="#" 
+                                </button>
+                                <button 
                                     onClick={(e) => { 
                                         e.preventDefault(); 
+                                        e.stopPropagation();
+                                        console.log('Logout button clicked');
                                         onLogout(); 
                                         setMenuOpen(false); 
                                     }} 
-                                    className="block px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
+                                    className="block w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
                                 >
                                     <LogOutIcon className="w-4 h-4"/> Logout
-                                </a>
+                                </button>
                             </div>
                         )}
                     </div>
