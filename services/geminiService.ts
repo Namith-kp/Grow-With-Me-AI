@@ -29,7 +29,6 @@ const responseSchema = {
 };
 
 export const findMatches = async (currentUser: User, potentialPartners: User[]): Promise<{ matches: Match[], isFallback: boolean }> => {
-<<<<<<< HEAD
     // TEMPORARILY DISABLED: Gemini API matching
     // Using fallback matching algorithm instead
     console.log("Gemini API matching temporarily disabled. Using fallback matching algorithm.");
@@ -41,8 +40,6 @@ export const findMatches = async (currentUser: User, potentialPartners: User[]):
 
     // Original Gemini API code (commented out for temporary disable):
     /*
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const model = "gemini-2.5-flash";
 
     const prompt = `
@@ -108,10 +105,7 @@ export const findMatches = async (currentUser: User, potentialPartners: User[]):
         
         throw new Error("Failed to fetch matches from the AI. The Gemini API key may be invalid or there could be a network issue.");
     }
-<<<<<<< HEAD
     */
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 };
 
 // Fallback matching algorithm when Gemini API quota is exceeded

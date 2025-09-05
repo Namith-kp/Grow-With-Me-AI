@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IdeaJoinRequest, User } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { CheckIcon, XIcon, UsersIcon } from './icons';
-<<<<<<< HEAD
 // ProfileCard import removed - component no longer exists
-=======
-import ProfileCard from './ProfileCard';
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
 interface JoinRequestsProps {
     user: User;
@@ -15,11 +11,7 @@ interface JoinRequestsProps {
 
 const JoinRequests: React.FC<JoinRequestsProps> = ({ user, onRequestsUpdated }) => {
     const [requests, setRequests] = useState<IdeaJoinRequest[]>([]);
-<<<<<<< HEAD
     // Removed viewingProfile state - no longer needed without ProfileCard
-=======
-    const [viewingProfile, setViewingProfile] = useState<User | null>(null);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     useEffect(() => {
         if (user) {
@@ -52,23 +44,7 @@ const JoinRequests: React.FC<JoinRequestsProps> = ({ user, onRequestsUpdated }) 
         }
     };
 
-<<<<<<< HEAD
     // Removed handleViewProfile function - no longer needed without ProfileCard
-=======
-    const handleViewProfile = async (developerId: string) => {
-        try {
-            const profile = await firestoreService.getUserProfile(developerId);
-            if (profile) {
-                setViewingProfile(profile);
-            } else {
-                alert("Could not load developer's profile.");
-            }
-        } catch (error) {
-            console.error("Error fetching profile:", error);
-            alert("An error occurred while fetching the profile.");
-        }
-    };
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     return (
         <>
@@ -79,11 +55,7 @@ const JoinRequests: React.FC<JoinRequestsProps> = ({ user, onRequestsUpdated }) 
                         <li key={request.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div 
                                 className="flex items-center gap-4 cursor-pointer group"
-<<<<<<< HEAD
                                 // onClick removed - profile viewing no longer available
-=======
-                                onClick={() => handleViewProfile(request.developerId)}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                             >
                                 <img src={request.developerAvatar} alt={request.developerName} className="w-12 h-12 rounded-full" />
                                 <div>
@@ -113,11 +85,7 @@ const JoinRequests: React.FC<JoinRequestsProps> = ({ user, onRequestsUpdated }) 
                     ))}
                 </ul>
             </div>
-<<<<<<< HEAD
             {/* ProfileCard removed - component no longer exists */}
-=======
-            {viewingProfile && <ProfileCard user={viewingProfile} onClose={() => setViewingProfile(null)} currentUserId={user.id} />}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
         </>
     );
 };

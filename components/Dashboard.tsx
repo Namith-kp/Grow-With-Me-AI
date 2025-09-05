@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { User, EnrichedMatch, Role } from '../types';
-<<<<<<< HEAD
 import { ZapIcon, SearchIcon, UserPlusIcon, MessageSquareIcon, CheckCheckIcon, StarIcon } from './icons';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import FeedbackModal from './FeedbackModal';
@@ -11,41 +10,6 @@ import InfoModal from './InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
-=======
-import { ZapIcon, SettingsIcon, UserIcon, MessageSquareIcon, StarIcon, SearchIcon, UserPlusIcon, CheckCheckIcon } from './icons';
-import AnalyticsDashboard from './AnalyticsDashboard';
-import ProfileCard from './ProfileCard';
-import FeedbackModal from './FeedbackModal';
-import { firestoreService } from '../services/firestoreService';
-import { db } from '../firebase';
-import NegotiationDeck from './NegotiationDeck';
-import { ConnectionsModal } from './ConnectionsModal';
-import InfoModal from './InfoModal';
-import FounderNegotiations from './FounderNegotiations';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../utils/cn';
-
-// Custom hook for responsive animation timing
-const useResponsiveAnimation = () => {
-    const [isLargeScreen, setIsLargeScreen] = useState(false);
-    
-    useEffect(() => {
-        const checkScreenSize = () => {
-            setIsLargeScreen(window.innerWidth >= 1024);
-        };
-        
-        checkScreenSize();
-        window.addEventListener('resize', checkScreenSize);
-        
-        return () => window.removeEventListener('resize', checkScreenSize);
-    }, []);
-    
-    return {
-        enterDuration: isLargeScreen ? 0.5 : 0.2,
-        exitDuration: isLargeScreen ? 0.5: 0.15,
-    };
-};
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
 interface DashboardProps {
     user: User;
@@ -57,10 +21,7 @@ interface DashboardProps {
     setSearchQuery: (query: string) => void;
     hasActiveSearch: boolean;
     onMessage: (user: User) => void;
-<<<<<<< HEAD
     onViewProfile: (user: User) => void;
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     onRequestsUpdated: () => void;
 }
 
@@ -95,10 +56,6 @@ const MatchCard: React.FC<{
 }> = ({ match, onMessage, onConnect, onFeedback, onViewProfile, isConnected, isPending, index, hoveredIndex, setHoveredIndex }) => {
     const matchedUser = match.user;
     const scoreColor = match.compatibilityScore > 80 ? 'text-emerald-400' : match.compatibilityScore > 60 ? 'text-amber-400' : 'text-orange-400';
-<<<<<<< HEAD
-=======
-    const { enterDuration, exitDuration } = useResponsiveAnimation();
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     return (
         <div 
@@ -106,48 +63,21 @@ const MatchCard: React.FC<{
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
         >
-<<<<<<< HEAD
             {/* Hover Background Effect */}
-=======
-            {/* Aceternity UI Hover Background Effect - Smooth sliding without blinking */}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             <AnimatePresence mode="wait">
                 {hoveredIndex === index && (
                     <motion.span
                         className="absolute inset-0 h-full w-full bg-slate-800/[0.8] block rounded-3xl"
                         layoutId="hoverBackground"
                         initial={{ opacity: 0 }}
-<<<<<<< HEAD
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-=======
-                        animate={{
-                            opacity: 1,
-                            transition: { 
-                                duration: enterDuration,
-                                ease: "easeOut"
-                            },
-                        }}
-                        exit={{
-                            opacity: 0,
-                            transition: { 
-                                duration: 0.05,
-                                ease: "linear"
-                            },
-                        }}
-                        style={{
-                            willChange: 'opacity, transform',
-                            transformOrigin: 'center',
-                        }}
-                        layout
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     />
                 )}
             </AnimatePresence>
 
             {/* Card content */}
-<<<<<<< HEAD
             <div className="relative z-20 bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 h-full">
                 {/* Mobile layout */}
                 <div className="sm:hidden space-y-3">
@@ -161,16 +91,6 @@ const MatchCard: React.FC<{
                                 onViewProfile(matchedUser);
                             }}
                         >
-=======
-            <div 
-                className="relative z-20 bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 h-full"
-                onClick={() => onViewProfile(matchedUser)}
-            >
-                {/* Mobile layout */}
-                <div className="sm:hidden space-y-3">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                             <img 
                                 src={matchedUser.avatarUrl} 
                                 alt={matchedUser.name} 
@@ -204,7 +124,6 @@ const MatchCard: React.FC<{
                         </div>
                     </div>
                     
-<<<<<<< HEAD
                     <div 
                         className="space-y-2 cursor-pointer hover:bg-slate-800/30 rounded-lg p-2 -m-2 transition-colors"
                         onClick={() => {
@@ -214,18 +133,11 @@ const MatchCard: React.FC<{
                             onViewProfile(matchedUser);
                         }}
                     >
-=======
-                    <div className="space-y-2">
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-800/50 rounded-full h-2">
                                 <div 
                                     className="bg-gradient-to-r from-slate-600 to-slate-500 h-2 rounded-full transition-all duration-500" 
-<<<<<<< HEAD
                                     style={{ width: match.compatibilityScore + '%' }}
-=======
-                                    style={{ width: `${match.compatibilityScore}%` }}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                 />
                             </div>
                             <span className={cn("text-xs font-bold", scoreColor)}>{match.compatibilityScore}%</span>
@@ -252,7 +164,6 @@ const MatchCard: React.FC<{
 
                 {/* Desktop layout */}
                 <div className="hidden sm:block space-y-4">
-<<<<<<< HEAD
                     <div 
                         className="flex items-start space-x-4 cursor-pointer hover:bg-slate-800/30 rounded-lg p-3 -m-3 transition-colors"
                         onClick={() => {
@@ -279,14 +190,6 @@ const MatchCard: React.FC<{
                                 </div>
                             );
                         })()}
-=======
-                    <div className="flex items-start space-x-4">
-                        <img 
-                            src={matchedUser.avatarUrl} 
-                            alt={matchedUser.name} 
-                            className="w-20 h-20 rounded-full border-2 border-slate-700 shadow-lg" 
-                        />
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                                 <h3 className="text-xl font-bold text-white">{matchedUser.name}</h3>
@@ -303,7 +206,6 @@ const MatchCard: React.FC<{
                         </div>
                     </div>
                     
-<<<<<<< HEAD
                     <div 
                         className="space-y-3 cursor-pointer hover:bg-slate-800/30 rounded-lg p-3 -m-3 transition-colors"
                         onClick={() => {
@@ -313,25 +215,17 @@ const MatchCard: React.FC<{
                             onViewProfile(matchedUser);
                         }}
                     >
-=======
-                    <div className="space-y-3">
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         <div className="flex items-center gap-3">
                             <div className="flex-1 bg-slate-800/50 rounded-full h-3">
                                 <div 
                                     className="bg-gradient-to-r from-slate-600 to-slate-500 h-3 rounded-full transition-all duration-500" 
-<<<<<<< HEAD
                                     style={{ width: match.compatibilityScore + '%' }}
-=======
-                                    style={{ width: `${match.compatibilityScore}%` }}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                 />
                             </div>
                             <span className={cn("text-lg font-bold", scoreColor)}>{match.compatibilityScore}%</span>
                         </div>
                         
                         <p className="text-slate-300 text-sm italic border-l-2 border-slate-600 pl-4">"{match.justification}"</p>
-<<<<<<< HEAD
                     </div>
                     
                     <div className="flex gap-2 pt-2">
@@ -363,39 +257,6 @@ const MatchCard: React.FC<{
                         >
                             <MessageSquareIcon className="w-4 h-4 inline mr-2"/> Message
                         </button>
-=======
-                        
-                        <div className="flex gap-2 pt-2">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onFeedback(matchedUser); }} 
-                                className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-white transition-colors"
-                            >
-                                <StarIcon className="w-4 h-4"/>
-                            </button>
-                            {isConnected ? (
-                                <button disabled className="flex-1 py-2 px-4 bg-emerald-600/20 text-emerald-300 border border-emerald-600/30 rounded-lg text-sm font-medium cursor-not-allowed">
-                                    <CheckCheckIcon className="w-4 h-4 inline mr-2"/> Connected
-                                </button>
-                            ) : isPending ? (
-                                <button disabled className="flex-1 py-2 px-4 bg-amber-600/20 text-amber-300 border border-amber-600/30 rounded-lg text-sm font-medium cursor-not-allowed">
-                                    <CheckCheckIcon className="w-4 h-4 inline mr-2"/> Pending
-                                </button>
-                            ) : (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); onConnect(matchedUser); }} 
-                                    className="flex-1 py-2 px-4 bg-gradient-to-r from-slate-600 to-slate-500 hover:from-slate-500 hover:to-slate-400 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-slate-500/25"
-                                >
-                                    <UserPlusIcon className="w-4 h-4 inline mr-2"/> Connect
-                                </button>
-                            )}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onMessage(matchedUser); }} 
-                                className="py-2 px-4 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                                <MessageSquareIcon className="w-4 h-4 inline mr-2"/> Message
-                            </button>
-                        </div>
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     </div>
                 </div>
             </div>
@@ -413,7 +274,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     setSearchQuery,
     hasActiveSearch,
     onMessage,
-<<<<<<< HEAD
     onViewProfile,
     onRequestsUpdated,
 }) => {
@@ -421,11 +281,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     console.log('onViewProfile prop:', onViewProfile);
     console.log('typeof onViewProfile:', typeof onViewProfile);
     
-=======
-    onRequestsUpdated,
-}) => {
-    const [viewingProfile, setViewingProfile] = useState<User | null>(null);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [feedbackUser, setFeedbackUser] = useState<User | null>(null);
     const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
@@ -436,14 +291,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [enrichedMatches, setEnrichedMatches] = useState<EnrichedMatch[]>(matches);
 
-<<<<<<< HEAD
-=======
-    // Optimized hover handler with debouncing for large screens
-    const handleHoverChange = React.useCallback((index: number | null) => {
-        setHoveredIndex(index);
-    }, []);
-
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     // Update enrichedMatches when matches prop changes
     useEffect(() => {
         setEnrichedMatches(matches);
@@ -457,18 +304,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         // Set up real-time listeners for each match
         matches.forEach(match => {
-<<<<<<< HEAD
-=======
-            console.log(`Dashboard: Setting up real-time listener for match ${match.user.name}`);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             const unsubscribe = firestoreService.getConnectionStatusRealtime(
                 user.id, 
                 match.user.id, 
                 (status) => {
-<<<<<<< HEAD
-=======
-                    console.log(`Dashboard: Real-time status update for ${match.user.name}:`, status);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     setEnrichedMatches(prev => 
                         prev.map(m => 
                             m.user.id === match.user.id 
@@ -486,19 +325,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         const unsubCurrentUser = currentUserRef.onSnapshot(snapshot => {
             const userData = snapshot.data();
             if (userData && userData.connections) {
-<<<<<<< HEAD
-=======
-                // Update matches based on new connections
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 setEnrichedMatches(prev => 
                     prev.map(match => ({
                         ...match,
                         isConnected: userData.connections.includes(match.user.id),
-<<<<<<< HEAD
                         isPending: false
-=======
-                        isPending: false // If connected, not pending
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     }))
                 );
             }
@@ -530,10 +361,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                 message: `Your connection request has been sent to ${connectUser.name}.`,
                 type: 'success',
             });
-<<<<<<< HEAD
-=======
-            setViewingProfile(null);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             onRequestsUpdated();
             
             // Optimistically update the match status to show pending
@@ -634,11 +461,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                 </motion.div>
 
-<<<<<<< HEAD
                 {/* Matches grid */}
-=======
-                {/* Matches grid with Aceternity UI hover effect */}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                 {activeTab === 'matches' && (
                     <motion.div 
                         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -661,20 +484,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         onMessage={onMessage}
                                         onConnect={handleConnect}
                                         onFeedback={(user) => { setFeedbackUser(user); setFeedbackModalOpen(true); }}
-<<<<<<< HEAD
                                         onViewProfile={onViewProfile}
-=======
-                                        onViewProfile={setViewingProfile}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                         isConnected={match.isConnected}
                                         isPending={match.isPending}
                                         index={idx}
                                         hoveredIndex={hoveredIndex}
-<<<<<<< HEAD
                                         setHoveredIndex={setHoveredIndex}
-=======
-                                        setHoveredIndex={handleHoverChange}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                     />
                                 </motion.div>
                             ))
@@ -726,11 +541,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     onClose={() => setConnectionsModalOpen(false)}
                     onSelectUser={(selectedUser) => {
                         setConnectionsModalOpen(false);
-<<<<<<< HEAD
                         onViewProfile(selectedUser);
-=======
-                        setViewingProfile(selectedUser);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     }}
                 />
             )}
@@ -742,21 +553,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     onClose={() => setInfoModal(null)}
                 />
             )}
-<<<<<<< HEAD
-=======
-            {viewingProfile && (
-                <ProfileCard
-                    user={viewingProfile}
-                    onClose={() => setViewingProfile(null)}
-                    isOwnProfile={false}
-                    onMessage={onMessage}
-                    onConnect={handleConnect}
-                    currentUserId={user.id}
-                    isConnected={enrichedMatches.find(m => m.user.id === viewingProfile.id)?.isConnected || false}
-                    isPending={enrichedMatches.find(m => m.user.id === viewingProfile.id)?.isPending || false}
-                />
-            )}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
         </div>
     );
 };

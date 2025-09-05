@@ -677,16 +677,10 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 interface IdeasBoardProps {
     user: User;
     onNavigateToNegotiation?: (negotiationId: string) => void;
-<<<<<<< HEAD
     focusedIdeaId?: string | null;
 }
 
 const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, focusedIdeaId }) => {
-=======
-}
-
-const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }) => {
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const ideasCache = React.useRef<{ ideas: Idea[], lastDoc: any, hasMore: boolean, visibilityFilter: 'all' | 'public' } | null>(null);
     const [lastIdeaDoc, setLastIdeaDoc] = useState<any>(null);
@@ -705,10 +699,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }
     const [myIdeas, setMyIdeas] = useState<Idea[]>([]);
     const [managingTeamFor, setManagingTeamFor] = useState<Idea | null>(null);
     const [negotiatingIdea, setNegotiatingIdea] = useState<Idea | null>(null);
-<<<<<<< HEAD
     const focusedRef = React.useRef<HTMLDivElement | null>(null);
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     const fetchAllData = async () => {
         // Use cache if available and filter hasn't changed
@@ -758,7 +749,6 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, activeTab, visibilityFilter]);
 
-<<<<<<< HEAD
     // Scroll to and highlight a focused idea when provided
     useEffect(() => {
         if (!focusedIdeaId) return;
@@ -774,8 +764,6 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }
         return () => clearTimeout(t);
     }, [focusedIdeaId, ideas]);
 
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
     // Reset cache when visibility filter changes
     useEffect(() => {
         ideasCache.current = null;
@@ -1101,10 +1089,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation }
                 {ideas.map(idea => (
                     <div
                         key={idea.id}
-<<<<<<< HEAD
                         data-idea-id={idea.id}
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         className="cursor-pointer group"
                         tabIndex={0}
                         role="button"

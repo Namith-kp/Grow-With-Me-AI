@@ -12,7 +12,6 @@ interface OnboardingProps {
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfile, loading = false, error = null }) => {
-<<<<<<< HEAD
     const storageKey = userProfile ? `onboarding:${userProfile.id}` : 'onboarding:anonymous';
     const storageStepKey = `${storageKey}:step`;
     const [initialized, setInitialized] = useState(false);
@@ -114,49 +113,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
             }
         } catch (e) {}
     }, [step, storageStepKey]);
-=======
-    const [step, setStep] = useState(1);
-    const [formData, setFormData] = useState({
-        name: '',
-        role: Role.Founder,
-        location: '',
-        dateOfBirth: '',
-        gender: '',
-        interests: '',
-        skills: '',
-        experience: '',
-        lookingFor: '',
-        // Investor specific fields
-        interestedDomains: '',
-        investmentExperience: '',
-        minBudget: '',
-        maxBudget: '',
-        minEquity: '',
-        maxEquity: '',
-    });
-
-    useEffect(() => {
-        if (userProfile) {
-            setFormData({
-                name: userProfile.name,
-                role: userProfile.role,
-                location: userProfile.location,
-                dateOfBirth: userProfile.dateOfBirth || '',
-                gender: userProfile.gender || '',
-                interests: userProfile.interests.join(', '),
-                skills: userProfile.skills.join(', '),
-                experience: (userProfile as any).experience || '',
-                lookingFor: userProfile.lookingFor,
-                interestedDomains: userProfile.investorProfile?.interestedDomains.join(', ') || '',
-                investmentExperience: userProfile.investorProfile?.investmentExperience || '',
-                minBudget: userProfile.investorProfile?.budget.min.toString() || '',
-                maxBudget: userProfile.investorProfile?.budget.max.toString() || '',
-                minEquity: userProfile.investorProfile?.expectedEquity.min.toString() || '',
-                maxEquity: userProfile.investorProfile?.expectedEquity.max.toString() || '',
-            });
-        }
-    }, [userProfile]);
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -213,10 +169,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
             location: formData.location,
             dateOfBirth: formData.dateOfBirth,
             gender: formData.gender,
-<<<<<<< HEAD
             phone: formData.phone,
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
             interests: formData.interests.split(',').map(s => s.trim()).filter(s => s),
             skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
             lookingFor: formData.lookingFor,
@@ -253,10 +206,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
         { title: 'Basic Info', description: 'Tell us about yourself', icon: <UserIcon className="w-5 h-5" /> },
         { title: 'Experience', description: 'Share your background', icon: <BriefcaseIcon className="w-5 h-5" /> },
         { title: 'Preferences', description: 'What are you looking for?', icon: <LightbulbIcon className="w-5 h-5" /> },
-<<<<<<< HEAD
         { title: 'Passkey (optional)', description: 'Set up secure passkey sign-in', icon: <CheckCircleIcon className="w-5 h-5" /> },
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
         { title: 'Review', description: 'Review your profile', icon: <CheckCircleIcon className="w-5 h-5" /> }
     ];
 
@@ -266,22 +216,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                 {/* Progress */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-3">
-<<<<<<< HEAD
                         <span className="text-sm text-slate-400">Step {step} of 5</span>
                         <span className="text-sm text-slate-400">{Math.round((step / 5) * 100)}%</span>
-=======
-                        <span className="text-sm text-slate-400">Step {step} of 4</span>
-                        <span className="text-sm text-slate-400">{Math.round((step / 4) * 100)}%</span>
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-1.5">
                         <div 
                             className="bg-gradient-to-r from-slate-500 to-slate-400 h-1.5 rounded-full transition-all duration-500"
-<<<<<<< HEAD
                             style={{ width: `${(step / 5) * 100}%` }}
-=======
-                            style={{ width: `${(step / 4) * 100}%` }}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         ></div>
                     </div>
                 </div>
@@ -363,7 +304,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-<<<<<<< HEAD
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">Phone (for connections)</label>
                                 <input 
@@ -375,8 +315,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                                     placeholder="e.g., +1 555 123 4567" 
                                 />
                             </div>
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         </>
                     )}
 
@@ -526,7 +464,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
 
                     {step === 4 && (
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-<<<<<<< HEAD
                             <h3 className="text-lg font-semibold text-white mb-4">Passkey sign-in (optional)</h3>
                             <p className="text-slate-400 text-sm mb-4">Set up a passkey for faster, more secure sign-ins. You can skip now and add later from settings.</p>
                             <div className="flex gap-3">
@@ -552,8 +489,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
 
                     {step === 5 && (
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                             <h3 className="text-lg font-semibold text-white mb-4">Profile Summary</h3>
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
@@ -614,11 +549,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                         Back
                     </button>
                     
-<<<<<<< HEAD
                     {step < 5 ? (
-=======
-                    {step < 4 ? (
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         <button 
                             onClick={nextStep} 
                             disabled={!canProceedToNextStep()}

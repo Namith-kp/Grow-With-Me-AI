@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, User } from '../types';
 import { LogoIcon, LogInIcon, LogOutIcon, MessageSquareIcon, LightbulbIcon, UserPlusIcon, UsersIcon, UserIcon, TrendingUpIcon, HamburgerIcon, XIcon, BellIcon } from './icons';
 import { firestoreService } from '../services/firestoreService';
-<<<<<<< HEAD
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
-=======
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
 
 interface HeaderProps {
     currentView: View;
@@ -161,7 +158,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             </button>
                         </div>
                         <div className="relative">
-<<<<<<< HEAD
                             {(() => {
                                 const safeUrl = getSafeAvatarUrl(userProfile);
                                 if (safeUrl) {
@@ -173,18 +169,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                     </div>
                                 );
                             })()}
-=======
-                            <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer" onClick={() => setMenuOpen(!isMenuOpen)} />
-                            {isMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-44 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
-                                    <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleNavigation(View.PEOPLE); setMenuOpen(false); setSidebarOpen(false); }} className={`block px-4 py-2 text-sm hover:bg-neutral-700 flex items-center gap-2 ${currentView === View.PEOPLE ? 'text-purple-400' : 'text-neutral-300'}`}><UsersIcon className="w-4 h-4"/> People</a>
-                                    <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); setSidebarOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
-                                        <LogOutIcon className="w-4 h-4"/> Logout
-                                    </a>
-                                </div>
-                            )}
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                         </div>
                     </div>
                 </header>
@@ -238,7 +222,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         <div className="mt-auto">
                             <div className="relative">
                                 <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={() => setMenuOpen(!isMenuOpen)}>
-<<<<<<< HEAD
                                     {(() => {
                                         const safeUrl = getSafeAvatarUrl(userProfile);
                                         if (safeUrl) {
@@ -250,9 +233,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                             </div>
                                         );
                                     })()}
-=======
-                                    <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-10 h-10 rounded-full border-2 border-neutral-700" />
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                                     <div className="flex-grow overflow-hidden">
                                         <p className="text-sm text-white font-semibold truncate">{userProfile.name}</p>
                                         <p className="text-xs text-neutral-400 truncate">{userProfile.role}</p>
@@ -314,7 +294,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                 <div className="mt-auto">
                     <div className="relative">
                         <div className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors" onClick={() => setMenuOpen(!isMenuOpen)}>
-<<<<<<< HEAD
                             {(() => {
                                 const safeUrl = getSafeAvatarUrl(userProfile);
                                 if (safeUrl) {
@@ -326,9 +305,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                     </div>
                                 );
                             })()}
-=======
-                            <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-10 h-10 rounded-full border-2 border-neutral-700" />
->>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
                             <div className="flex-grow overflow-hidden">
                                 <p className="text-sm text-white font-semibold truncate">{userProfile.name}</p>
                                 <p className="text-xs text-neutral-400 truncate">{userProfile.role}</p>
