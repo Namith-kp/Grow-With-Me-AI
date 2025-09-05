@@ -30,7 +30,7 @@ function generateDeviceFingerprint(): string {
 }
 
 // Utility: Check if this is a new device for the user
-function isNewDevice(userId: string): boolean {
+function checkIsNewDevice(userId: string): boolean {
     try {
         const deviceKey = `device_${userId}`;
         const currentFingerprint = generateDeviceFingerprint();
@@ -393,7 +393,7 @@ const App: React.FC = () => {
                     }
                     if (profile) {
                         // Check if this is a new device and user has passkeys set up
-                        const deviceIsNew = isNewDevice(user.uid);
+                        const deviceIsNew = checkIsNewDevice(user.uid);
                         setIsNewDevice(deviceIsNew);
                         
                         // Check if user has passkeys registered
