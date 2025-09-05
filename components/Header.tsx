@@ -47,6 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
     const [sidebarVisible, setSidebarVisible] = useState(false);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const showNav = useHideOnScroll();
+    const menuRef = useRef<HTMLDivElement>(null);
 
     const handleNavigation = (targetView: View) => {
         if (userProfile) {
@@ -80,6 +81,25 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
 
         return () => unsubscribe();
     }, [userProfile]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuOpen(false);
+            }
+        };
+
+        if (isMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isMenuOpen]);
 
     // If not logged in, show simple header
     if (!userProfile) {
@@ -157,18 +177,72 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                                 )}
                             </button>
                         </div>
-                        <div className="relative">
+                        <div className="relative" ref={menuRef}>
                             {(() => {
                                 const safeUrl = getSafeAvatarUrl(userProfile);
                                 if (safeUrl) {
-                                    return <img src={safeUrl} alt={userProfile.name} className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer object-cover" onClick={() => setMenuOpen(!isMenuOpen)} />;
+                                    return (
+                                        <img 
+                                            src={safeUrl} 
+                                            alt={userProfile.name} 
+                                            className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer object-cover touch-manipulation" 
+                                            onClick={() => {
+                                                console.log('Avatar clicked, current menu state:', isMenuOpen);
+                                                setMenuOpen(!isMenuOpen);
+                                            }}
+                                            onTouchEnd={(e) => {
+                                                e.preventDefault();
+                                                console.log('Avatar touched, current menu state:', isMenuOpen);
+                                                setMenuOpen(!isMenuOpen);
+                                            }}
+                                        />
+                                    );
                                 }
                                 return (
-                                    <div className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold" onClick={() => setMenuOpen(!isMenuOpen)}>
+                                    <div 
+                                        className="w-9 h-9 rounded-full border-2 border-neutral-700 cursor-pointer bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold touch-manipulation" 
+                                        onClick={() => {
+                                            console.log('Avatar div clicked, current menu state:', isMenuOpen);
+                                            setMenuOpen(!isMenuOpen);
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            e.preventDefault();
+                                            console.log('Avatar div touched, current menu state:', isMenuOpen);
+                                            setMenuOpen(!isMenuOpen);
+                                        }}
+                                    >
                                         {getUserInitials(userProfile.name)}
                                     </div>
                                 );
                             })()}
+                            
+                            {/* Dropdown menu for top header avatar */}
+                            {isMenuOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 z-50" style={{ display: 'block', opacity: 1, transform: 'scale(1)' }}>
+                                    <a 
+                                        href="#" 
+                                        onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            setView(View.PROFILE); 
+                                            setMenuOpen(false); 
+                                        }} 
+                                        className="block px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
+                                    >
+                                        My Profile
+                                    </a>
+                                    <a 
+                                        href="#" 
+                                        onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            onLogout(); 
+                                            setMenuOpen(false); 
+                                        }} 
+                                        className="block px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
+                                    >
+                                        <LogOutIcon className="w-4 h-4"/> Logout
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -311,9 +385,27 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             </div>
                         </div>
                         {isMenuOpen && (
-                            <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm">
-                                <a href="#" onClick={(e) => { e.preventDefault(); setView(View.PROFILE); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700">My Profile</a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); setMenuOpen(false); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-neutral-700 flex items-center gap-2">
+                            <div className="absolute bottom-full left-0 mb-2 w-full bg-neutral-800 rounded-lg shadow-lg py-1 border border-neutral-700 animate-fade-in-scale-sm z-50">
+                                <a 
+                                    href="#" 
+                                    onClick={(e) => { 
+                                        e.preventDefault(); 
+                                        setView(View.PROFILE); 
+                                        setMenuOpen(false); 
+                                    }} 
+                                    className="block px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600 touch-manipulation"
+                                >
+                                    My Profile
+                                </a>
+                                <a 
+                                    href="#" 
+                                    onClick={(e) => { 
+                                        e.preventDefault(); 
+                                        onLogout(); 
+                                        setMenuOpen(false); 
+                                    }} 
+                                    className="block px-4 py-3 text-sm text-red-400 hover:bg-neutral-700 active:bg-neutral-600 flex items-center gap-2 touch-manipulation"
+                                >
                                     <LogOutIcon className="w-4 h-4"/> Logout
                                 </a>
                             </div>
