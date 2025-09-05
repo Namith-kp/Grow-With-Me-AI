@@ -8,7 +8,7 @@ This contains everything you need to run your app locally.
 
 
 <<<<<<< HEAD
-1. Install dependencie:
+1. Install dependencies:
 =======
 1. Install dependencies:
 >>>>>>> 5dd9573c0c8aa29b500e228bedbe9277ac96e9ab
