@@ -274,7 +274,11 @@ const App: React.FC = () => {
         if (userProfile?.id && !isGuestMode) {
             const unsubscribe = db.collection('users').doc(userProfile.id)
                 .onSnapshot(async (doc) => {
-                    const updatedProfileData = doc.data() as Omit<User, 'id'>;
+                    const updatedProfileData = doc.data() as any;
+                    // Map photoURL to avatarUrl for compatibility
+                    if (updatedProfileData.photoURL && !updatedProfileData.avatarUrl) {
+                        updatedProfileData.avatarUrl = updatedProfileData.photoURL;
+                    }
                     // Preserve the ID from the existing profile, as doc.data() does not include it.
                     const profileWithId = { ...userProfile, ...updatedProfileData };
                     setUserProfile(profileWithId);
@@ -330,6 +334,7 @@ const App: React.FC = () => {
             const simulatedUser: User = {
                 id: email, // Use email as unique ID for demo; in production, use a backend-verified ID
                 name,
+                username: '', // Will be set during onboarding
                 email,
                 avatarUrl: avatarUrl || `https://api.dicebear.com/8.x/bottts/svg?seed=${email}`,
                 connections: [],
@@ -381,6 +386,7 @@ const App: React.FC = () => {
                         await firestoreService.createUserProfile(user.uid, {
                             email: user.email || '',
                             name: user.displayName || '',
+                            username: '', // Will be set during onboarding
                             avatarUrl: user.photoURL || '',
                             connections: [],
                             role: Role.Founder,
@@ -607,9 +613,15 @@ const App: React.FC = () => {
         if (!authUser || !userProfile) return;
         setError(null);
         try {
+            // Map photoURL to avatarUrl for compatibility
+            const profileWithMappedAvatar = { ...updatedProfile };
+            if ((updatedProfile as any).photoURL && !updatedProfile.avatarUrl) {
+                profileWithMappedAvatar.avatarUrl = (updatedProfile as any).photoURL;
+            }
+            
             const updatedUserProfile: User = {
                 ...userProfile,
-                ...updatedProfile,
+                ...profileWithMappedAvatar,
             };
 
             if (isGuestMode) {
@@ -1072,6 +1084,7 @@ const App: React.FC = () => {
                 return <NotificationsPage 
                     currentUser={userProfile}
                     onNavigateToView={navigate}
+                    onNavigateToProfile={handleViewUserProfile}
                     onBack={() => navigate(View.DASHBOARD)}
                 />;
             case View.CONNECTIONS:

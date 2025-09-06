@@ -35,11 +35,10 @@ export const getUserInitials = (name?: string | null): string => {
 export const getSafeAvatarUrl = (user: Partial<User> | null | undefined): string | null => {
     if (!user) return null;
     const photoURL = (user as any).photoURL as string | undefined;
-    const avatarUrl = (user as any).avatarUrl as string | undefined;
+    const avatarUrl = user.avatarUrl;
 
     // If there is an explicit customAvatar flag, honor it
-    const customAvatar = (user as any).customAvatar as boolean | undefined;
-    if (customAvatar && photoURL) return photoURL;
+    if (user.customAvatar && photoURL) return photoURL;
 
     // Otherwise, reject Google-provided avatars
     if (photoURL && !isGoogleAvatarUrl(photoURL)) return photoURL;

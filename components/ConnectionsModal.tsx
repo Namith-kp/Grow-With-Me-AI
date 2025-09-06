@@ -3,6 +3,7 @@ import { User } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { motion, AnimatePresence } from 'motion/react';
 import { XIcon } from './icons';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface ConnectionsModalProps {
     connectionIds: string[];
@@ -83,11 +84,17 @@ export const ConnectionsModal: React.FC<ConnectionsModalProps> = ({ connectionId
                                     transition={{ delay: idx * 0.1, duration: 0.3 }}
                                     whileHover={{ scale: 1.02, y: -2 }}
                                 >
-                                    <img 
-                                        src={user.avatarUrl} 
-                                        alt={user.name} 
-                                        className="w-12 h-12 rounded-full mr-4 border-2 border-slate-600 shadow-lg" 
-                                    />
+                                    {getSafeAvatarUrl(user) ? (
+                                        <img 
+                                            src={getSafeAvatarUrl(user)} 
+                                            alt={user.name} 
+                                            className="w-12 h-12 rounded-full mr-4 border-2 border-slate-600 shadow-lg" 
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-full mr-4 border-2 border-slate-600 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                            {getUserInitials(user.name)}
+                                        </div>
+                                    )}
                                     <div className="flex-1">
                                         <p className="font-semibold text-white text-sm">{user.name}</p>
                                         <span className={`${user.role === 'Developer' ? 'text-blue-400' : user.role === 'Founder' ? 'text-purple-400' : 'text-emerald-400'} text-xs font-medium`}>

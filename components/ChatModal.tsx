@@ -5,6 +5,7 @@ import { XIcon, SendIcon } from './icons';
 import { db } from '../firebase';
 import { firestoreService } from '../services/firestoreService';
 import firebase from 'firebase/compat/app';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface ChatModalProps {
     user: User;
@@ -91,7 +92,13 @@ const ChatModal: React.FC<ChatModalProps> = ({ user, currentUser, onClose }) => 
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-lg h-[70vh] flex flex-col shadow-2xl shadow-purple-900/30 animate-fade-in-scale">
                 <div className="flex items-center justify-between p-4 border-b border-neutral-800">
                     <div className="flex items-center gap-3">
-                        <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full" />
+                        {getSafeAvatarUrl(user) ? (
+                            <img src={getSafeAvatarUrl(user)} alt={user.name} className="w-10 h-10 rounded-full" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                {getUserInitials(user.name)}
+                            </div>
+                        )}
                         <h3 className="font-bold text-lg text-white">{user.name}</h3>
                     </div>
                     <button onClick={onClose} title="Close chat" aria-label="Close chat" className="text-neutral-400 hover:text-white transition-colors">
@@ -102,12 +109,28 @@ const ChatModal: React.FC<ChatModalProps> = ({ user, currentUser, onClose }) => 
                 <div className="flex-1 p-4 overflow-y-auto space-y-4">
                     {messages.map(msg => (
                         <div key={msg.id} className={`flex gap-3 ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-                            {msg.senderId !== currentUser.id && <img src={user.avatarUrl} alt={`${user.name}'s avatar`} className="w-8 h-8 rounded-full" />}
+                            {msg.senderId !== currentUser.id && (
+                                getSafeAvatarUrl(user) ? (
+                                    <img src={getSafeAvatarUrl(user)} alt={`${user.name}'s avatar`} className="w-8 h-8 rounded-full" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                                        {getUserInitials(user.name)}
+                                    </div>
+                                )
+                            )}
                              <div className={`max-w-xs md:max-w-md p-3 rounded-2xl ${msg.senderId === currentUser.id ? 'bg-purple-600 text-white rounded-br-none' : 'bg-neutral-800 text-neutral-200 rounded-bl-none'}`}>
                                 <p>{msg.text}</p>
                                 <p className={`text-xs mt-1 ${msg.senderId === currentUser.id ? 'text-purple-200' : 'text-neutral-500'}`}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                              </div>
-                             {msg.senderId === currentUser.id && <img src={currentUser.avatarUrl} alt="Your avatar" className="w-8 h-8 rounded-full" />}
+                             {msg.senderId === currentUser.id && (
+                                 getSafeAvatarUrl(currentUser) ? (
+                                     <img src={getSafeAvatarUrl(currentUser)} alt="Your avatar" className="w-8 h-8 rounded-full" />
+                                 ) : (
+                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                                         {getUserInitials(currentUser.name)}
+                                     </div>
+                                 )
+                             )}
                         </div>
                     ))}
                     <div ref={messagesEndRef} />

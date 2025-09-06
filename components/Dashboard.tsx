@@ -8,8 +8,8 @@ import { db } from '../firebase';
 import { ConnectionsModal } from './ConnectionsModal';
 import InfoModal from './InfoModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
+import { cn } from '../utils/cn';
 
 interface DashboardProps {
     user: User;
@@ -91,11 +91,17 @@ const MatchCard: React.FC<{
                                 onViewProfile(matchedUser);
                             }}
                         >
-                            <img 
-                                src={matchedUser.avatarUrl} 
-                                alt={matchedUser.name} 
-                                className="w-12 h-12 rounded-full border-2 border-slate-700 shadow-lg" 
-                            />
+                            {getSafeAvatarUrl(matchedUser) ? (
+                                <img 
+                                    src={getSafeAvatarUrl(matchedUser)} 
+                                    alt={matchedUser.name} 
+                                    className="w-12 h-12 rounded-full border-2 border-slate-700 shadow-lg" 
+                                />
+                            ) : (
+                                <div className="w-12 h-12 rounded-full border-2 border-slate-700 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                    {getUserInitials(matchedUser.name)}
+                                </div>
+                            )}
                             <div>
                                 <h3 className="text-sm font-semibold text-white">{matchedUser.name}</h3>
                                 <span className={cn(

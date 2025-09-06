@@ -5,6 +5,7 @@ import { SearchIcon, SendIcon } from './icons';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
 import { firestoreService } from '../services/firestoreService';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface MessagesProps {
     chats: Chat[];
@@ -219,11 +220,17 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, se
                                                             : "bg-slate-800/20 border border-slate-700/20"
                                                     )}
                                                 >
-                                                    <img 
-                                                        src={partner.avatarUrl} 
-                                                        alt={partner.name} 
-                                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg" 
-                                                    />
+                                                    {getSafeAvatarUrl(partner) ? (
+                                                        <img 
+                                                            src={getSafeAvatarUrl(partner)} 
+                                                            alt={partner.name} 
+                                                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg" 
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                                            {getUserInitials(partner.name)}
+                                                        </div>
+                                                    )}
                                                                                                             <div className="flex-grow overflow-hidden min-w-0">
                                                             <div className="flex items-center justify-between">
                                                                 <h3 className="font-bold text-white truncate text-base sm:text-lg">{partner.name}</h3>
@@ -281,11 +288,17 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, se
                                                         : "bg-slate-800/20 border border-slate-700/20"
                                                 )}
                                             >
-                                                <img 
-                                                    src={connection.avatarUrl} 
-                                                    alt={connection.name} 
-                                                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg" 
-                                                />
+                                                {getSafeAvatarUrl(connection) ? (
+                                                    <img 
+                                                        src={getSafeAvatarUrl(connection)} 
+                                                        alt={connection.name} 
+                                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg" 
+                                                    />
+                                                ) : (
+                                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mr-3 sm:mr-4 border-2 border-slate-700/50 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                                        {getUserInitials(connection.name)}
+                                                    </div>
+                                                )}
                                                 <div className="flex-grow overflow-hidden min-w-0">
                                                     <h3 className="font-bold text-white text-base sm:text-lg">{connection.name}</h3>
                                                     <p className="text-sm text-slate-400">{connection.role}</p>

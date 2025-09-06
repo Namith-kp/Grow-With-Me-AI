@@ -1,6 +1,8 @@
 import { db } from '../firebase';
 import { User, Chat, Idea, IdeaJoinRequest, ConnectionRequest, Comment, Negotiation, Offer, Notification, NotificationType } from '../types';
 import firebase from 'firebase/compat/app';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { getAllCountries, getStatesByCountry } from '../data/locations-comprehensive';
 
 type UserCreationData = Omit<User, 'id'>;
 
@@ -49,7 +51,12 @@ export const firestoreService = {
         const docRef = db.collection("users").doc(uid);
         const docSnap = await docRef.get();
         if (docSnap.exists) {
-            return { id: docSnap.id, ...docSnap.data() } as User;
+            const data = docSnap.data() as any;
+            // Map photoURL to avatarUrl for compatibility
+            if (data.photoURL && !data.avatarUrl) {
+                data.avatarUrl = data.photoURL;
+            }
+            return { id: docSnap.id, ...data } as User;
         }
         return null;
     },
@@ -62,6 +69,42 @@ export const firestoreService = {
     updateUserProfile: async (uid: string, data: Partial<User>): Promise<void> => {
         const userRef = db.collection("users").doc(uid);
         await userRef.update(data);
+        
+        // If avatar is being updated, also update founderAvatar in all user's ideas
+        const dataWithPhotoURL = data as any;
+        if (dataWithPhotoURL.photoURL !== undefined || data.avatarUrl !== undefined || data.customAvatar !== undefined) {
+            const newAvatarUrl = data.avatarUrl || dataWithPhotoURL.photoURL;
+            const newCustomAvatar = data.customAvatar;
+            
+            try {
+                // Get all ideas by this founder
+                const ideasSnapshot = await db.collection('ideas')
+                    .where('founderId', '==', uid)
+                    .get();
+                
+                // Update founderAvatar and founderCustomAvatar in all ideas
+                const batch = db.batch();
+                ideasSnapshot.docs.forEach(doc => {
+                    const updateData: any = {};
+                    if (newAvatarUrl !== undefined) {
+                        updateData.founderAvatar = newAvatarUrl;
+                    }
+                    if (newCustomAvatar !== undefined) {
+                        updateData.founderCustomAvatar = newCustomAvatar;
+                    }
+                    if (Object.keys(updateData).length > 0) {
+                        batch.update(doc.ref, updateData);
+                    }
+                });
+                
+                if (ideasSnapshot.docs.length > 0) {
+                    await batch.commit();
+                    console.log(`Updated founder avatar info in ${ideasSnapshot.docs.length} ideas`);
+                }
+            } catch (error) {
+                console.warn('Failed to update founder avatar info in ideas:', error);
+            }
+        }
     },
     /** For legacy users, remove Gmail/Google-linked avatar URLs and mark as non-custom */
     stripGoogleAvatarsForAllUsers: async (): Promise<number> => {
@@ -412,6 +455,106 @@ export const firestoreService = {
         });
     },
 
+    // Helper function to create join request notification
+    createJoinRequestNotification: async (founderId: string, joinRequestId: string, ideaId: string, ideaTitle: string, developerId: string, developerName: string, founderIdParam: string, founderName: string): Promise<void> => {
+        console.log('Creating join request notification:', {
+            founderId,
+            joinRequestId,
+            ideaId,
+            ideaTitle,
+            developerId,
+            developerName
+        });
+        
+        await firestoreService.createNotification({
+            userId: founderId,
+            type: NotificationType.JOIN_REQUEST,
+            title: 'New Join Request',
+            message: `${developerName} wants to join your idea: ${ideaTitle}`,
+            data: {
+                joinRequestId,
+                ideaId,
+                ideaTitle,
+                developerId,
+                developerName,
+                founderId: founderIdParam,
+                founderName
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+        
+        console.log('Join request notification created successfully');
+    },
+
+    // Helper function to create join request response notification
+    createJoinRequestResponseNotification: async (developerId: string, joinRequestId: string, ideaId: string, ideaTitle: string, founderId: string, founderName: string, status: 'approved' | 'rejected'): Promise<void> => {
+        console.log('Creating join request response notification:', {
+            developerId,
+            joinRequestId,
+            ideaId,
+            ideaTitle,
+            founderId,
+            founderName,
+            status
+        });
+        
+        await firestoreService.createNotification({
+            userId: developerId,
+            type: NotificationType.JOIN_REQUEST_RESPONSE,
+            title: `Join Request ${status === 'approved' ? 'Approved' : 'Declined'}`,
+            message: `Your request to join "${ideaTitle}" has been ${status === 'approved' ? 'approved' : 'declined'} by ${founderName}`,
+            data: {
+                joinRequestId,
+                ideaId,
+                ideaTitle,
+                developerId,
+                founderId,
+                founderName,
+                responseStatus: status,
+                respondedAt: new Date()
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+        
+        console.log('Join request response notification created successfully');
+    },
+
+    // Helper function to create join request confirmation notification for founder
+    createJoinRequestConfirmationNotification: async (founderId: string, joinRequestId: string, ideaId: string, ideaTitle: string, developerId: string, developerName: string, status: 'approved' | 'rejected'): Promise<void> => {
+        console.log('Creating join request confirmation notification for founder:', {
+            founderId,
+            joinRequestId,
+            ideaId,
+            ideaTitle,
+            developerId,
+            developerName,
+            status
+        });
+        
+        await firestoreService.createNotification({
+            userId: founderId,
+            type: NotificationType.JOIN_REQUEST_RESPONSE,
+            title: `Join Request ${status === 'approved' ? 'Approved' : 'Declined'}`,
+            message: `You ${status === 'approved' ? 'approved' : 'declined'} ${developerName}'s request to join "${ideaTitle}"`,
+            data: {
+                joinRequestId,
+                ideaId,
+                ideaTitle,
+                developerId,
+                developerName,
+                founderId,
+                responseStatus: status,
+                respondedAt: new Date()
+            },
+            isRead: false,
+            timestamp: new Date()
+        });
+        
+        console.log('Join request confirmation notification created successfully');
+    },
+
     getChatId: (uid1: string, uid2: string): string => {
         return [uid1, uid2].sort().join('_');
     },
@@ -560,10 +703,24 @@ export const firestoreService = {
             developerName: developer.name,
             developerAvatar: developer.avatarUrl,
             founderId: idea.founderId,
+            founderName: idea.founderName,
             status: 'pending',
             timestamp: new Date(),
         };
-        await db.collection('joinRequests').add(request);
+        const requestRef = await db.collection('joinRequests').add(request);
+        const joinRequestId = requestRef.id;
+        
+        // Create notification for the founder
+        await firestoreService.createJoinRequestNotification(
+            idea.founderId,
+            joinRequestId,
+            idea.id,
+            idea.title,
+            developer.id,
+            developer.name,
+            idea.founderId,
+            idea.founderName
+        );
     },
 
     getJoinRequestsForFounder: (founderId: string, callback: (requests: IdeaJoinRequest[]) => void): (() => void) => {
@@ -584,15 +741,131 @@ export const firestoreService = {
         return unsubscribe;
     },
 
-    updateJoinRequest: async (requestId: string, status: 'approved' | 'rejected'): Promise<void> => {
+    updateJoinRequest: async (requestId: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> => {
         const requestRef = db.collection('joinRequests').doc(requestId);
+        const requestDoc = await requestRef.get();
+        const request = requestDoc.data() as IdeaJoinRequest;
+        
+        if (!request) {
+            throw new Error('Join request not found');
+        }
+
         await requestRef.update({ status });
 
         if (status === 'approved') {
-            const requestDoc = await requestRef.get();
-            const request = requestDoc.data() as IdeaJoinRequest;
             await firestoreService.joinIdea(request.ideaId, request.developerId);
         }
+
+        // Send notifications based on status
+        if (status === 'pending') {
+            // Create notification for the founder about the new/resent join request
+            console.log('Creating join request notification for founder (resend):', {
+                developerId: request.developerId,
+                founderId: request.founderId,
+                requestId
+            });
+            
+            await firestoreService.createJoinRequestNotification(
+                request.founderId,
+                requestId,
+                request.ideaId,
+                request.ideaTitle,
+                request.developerId,
+                request.developerName,
+                request.founderId,
+                request.founderName
+            );
+        } else if (status === 'approved' || status === 'rejected') {
+            // Update existing notifications instead of creating new ones
+            await firestoreService.updateJoinRequestNotifications(
+                requestId,
+                request.ideaId,
+                request.ideaTitle,
+                request.developerId,
+                request.developerName,
+                request.founderId,
+                request.founderName,
+                status
+            );
+        }
+    },
+
+    // Update existing join request notifications instead of creating new ones
+    updateJoinRequestNotifications: async (
+        joinRequestId: string, 
+        ideaId: string, 
+        ideaTitle: string, 
+        developerId: string, 
+        developerName: string, 
+        founderId: string, 
+        founderName: string, 
+        status: 'approved' | 'rejected'
+    ): Promise<void> => {
+        console.log('Updating join request notifications:', {
+            joinRequestId,
+            ideaId,
+            ideaTitle,
+            developerId,
+            developerName,
+            founderId,
+            founderName,
+            status
+        });
+
+        // Find and update the original join request notification for the founder
+        const founderNotificationsQuery = db.collection('notifications')
+            .where('userId', '==', founderId)
+            .where('type', '==', NotificationType.JOIN_REQUEST)
+            .where('data.joinRequestId', '==', joinRequestId);
+
+        const founderNotificationsSnapshot = await founderNotificationsQuery.get();
+        
+        if (!founderNotificationsSnapshot.empty) {
+            const founderNotification = founderNotificationsSnapshot.docs[0];
+            await founderNotification.ref.update({
+                title: `Join Request ${status === 'approved' ? 'Approved' : 'Declined'}`,
+                message: `You ${status === 'approved' ? 'approved' : 'declined'} ${developerName}'s request to join "${ideaTitle}"`,
+                type: NotificationType.JOIN_REQUEST_RESPONSE,
+                'data.responseStatus': status,
+                'data.respondedAt': new Date(),
+                timestamp: new Date()
+            });
+            console.log('Updated founder notification:', founderNotification.id);
+        }
+
+        // Find and update the original join request notification for the developer (if it exists)
+        const developerNotificationsQuery = db.collection('notifications')
+            .where('userId', '==', developerId)
+            .where('type', '==', NotificationType.JOIN_REQUEST)
+            .where('data.joinRequestId', '==', joinRequestId);
+
+        const developerNotificationsSnapshot = await developerNotificationsQuery.get();
+        
+        if (!developerNotificationsSnapshot.empty) {
+            const developerNotification = developerNotificationsSnapshot.docs[0];
+            await developerNotification.ref.update({
+                title: `Join Request ${status === 'approved' ? 'Approved' : 'Declined'}`,
+                message: `Your request to join "${ideaTitle}" has been ${status === 'approved' ? 'approved' : 'declined'} by ${founderName}`,
+                type: NotificationType.JOIN_REQUEST_RESPONSE,
+                'data.responseStatus': status,
+                'data.respondedAt': new Date(),
+                timestamp: new Date()
+            });
+            console.log('Updated developer notification:', developerNotification.id);
+        } else {
+            // If no existing notification for developer, create a new one
+            await firestoreService.createJoinRequestResponseNotification(
+                developerId,
+                joinRequestId,
+                ideaId,
+                ideaTitle,
+                founderId,
+                founderName,
+                status
+            );
+        }
+
+        console.log('Join request notifications updated successfully');
     },
 
     removeTeamMember: async (ideaId: string, memberId: string): Promise<void> => {
@@ -789,6 +1062,7 @@ export const firestoreService = {
     },
 
     createNegotiationRequest: async (idea: Idea, investor: User): Promise<string> => {
+        console.log('Creating negotiation for idea:', idea.id, 'founderUsername:', idea.founderUsername);
         const negotiationId = `${idea.id}_${investor.id}`;
         const negotiationRef = db.collection('negotiations').doc(negotiationId);
 
@@ -802,9 +1076,11 @@ export const firestoreService = {
             ideaTitle: idea.title,
             investorId: investor.id,
             investorName: investor.name,
+            investorUsername: investor.username,
             investorAvatar: investor.avatarUrl,
             founderId: idea.founderId,
             founderName: idea.founderName,
+            founderUsername: idea.founderUsername || idea.founderName?.toLowerCase().replace(/\s+/g, '') || 'unknown',
             status: 'pending',
             timestamp: new Date(),
             offers: [],
@@ -1230,6 +1506,171 @@ export const firestoreService = {
         return { ownIdeas, connectedIdeas };
     },
 
+    // Username validation and management functions
+    validateUsername: (username: string): { isValid: boolean; error?: string } => {
+        // Username requirements
+        if (!username || username.trim().length === 0) {
+            return { isValid: false, error: 'Username is required' };
+        }
+        
+        const trimmedUsername = username.trim();
+        
+        // Length validation
+        if (trimmedUsername.length < 3) {
+            return { isValid: false, error: 'Username must be at least 3 characters long' };
+        }
+        
+        if (trimmedUsername.length > 20) {
+            return { isValid: false, error: 'Username must be no more than 20 characters long' };
+        }
+        
+        // Character validation - only alphanumeric and underscores
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(trimmedUsername)) {
+            return { isValid: false, error: 'Username can only contain letters, numbers, and underscores' };
+        }
+        
+        // Cannot start with underscore
+        if (trimmedUsername.startsWith('_')) {
+            return { isValid: false, error: 'Username cannot start with an underscore' };
+        }
+        
+        // Cannot end with underscore
+        if (trimmedUsername.endsWith('_')) {
+            return { isValid: false, error: 'Username cannot end with an underscore' };
+        }
+        
+        // Cannot have consecutive underscores
+        if (trimmedUsername.includes('__')) {
+            return { isValid: false, error: 'Username cannot have consecutive underscores' };
+        }
+        
+        // Reserved usernames
+        const reservedUsernames = [
+            'admin', 'administrator', 'root', 'user', 'guest', 'test', 'demo',
+            'support', 'help', 'api', 'www', 'mail', 'email', 'contact',
+            'about', 'privacy', 'terms', 'legal', 'security', 'system',
+            'grow', 'growwithme', 'growwithmeai', 'row', 'rowwithme'
+        ];
+        
+        if (reservedUsernames.includes(trimmedUsername.toLowerCase())) {
+            return { isValid: false, error: 'This username is reserved and cannot be used' };
+        }
+        
+        return { isValid: true };
+    },
+
+    checkUsernameAvailability: async (username: string, excludeUserId?: string): Promise<{ isValid: boolean; error?: string }> => {
+        try {
+            // First validate the username format
+            const validation = firestoreService.validateUsername(username);
+            if (!validation.isValid) {
+                return { isValid: false, error: validation.error };
+            }
+            
+            const trimmedUsername = username.trim().toLowerCase();
+            
+            // Add timeout protection for database query
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Database query timeout')), 10000); // 10 second timeout
+            });
+            
+            // Check if username exists in users collection
+            const usersRef = db.collection('users').where('username', '==', trimmedUsername);
+            const queryPromise = usersRef.get();
+            
+            const snapshot = await Promise.race([queryPromise, timeoutPromise]);
+            
+            // If we're excluding a user (for updates), check if any other user has this username
+            if (excludeUserId) {
+                const conflictingUsers = snapshot.docs.filter(doc => doc.id !== excludeUserId);
+                if (conflictingUsers.length > 0) {
+                    return { isValid: false, error: 'This username is already taken' };
+                }
+            } else {
+                // For new users, check if any user has this username
+                if (!snapshot.empty) {
+                    return { isValid: false, error: 'This username is already taken' };
+                }
+            }
+            
+            return { isValid: true };
+        } catch (error) {
+            console.error('Error checking username availability:', error);
+            
+            // Provide more specific error messages
+            if (error instanceof Error) {
+                if (error.message.includes('timeout')) {
+                    return { isValid: false, error: 'Request timed out. Please try again.' };
+                } else if (error.message.includes('permission')) {
+                    return { isValid: false, error: 'Permission denied. Please try again.' };
+                } else if (error.message.includes('network')) {
+                    return { isValid: false, error: 'Network error. Please check your connection.' };
+                }
+            }
+            
+            return { isValid: false, error: 'Unable to verify username availability. Please try again.' };
+        }
+    },
+
+    generateSuggestedUsernames: (name: string, email: string): string[] => {
+        const suggestions: string[] = [];
+        
+        // Clean the name for username generation
+        const cleanName = name.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+            .replace(/\s+/g, '') // Remove spaces
+            .substring(0, 10); // Limit length
+        
+        // Clean the email for username generation
+        const emailPrefix = email.split('@')[0].toLowerCase()
+            .replace(/[^a-z0-9]/g, '') // Remove special characters
+            .substring(0, 8); // Limit length
+        
+        // Generate suggestions based on name
+        if (cleanName) {
+            suggestions.push(cleanName);
+            suggestions.push(cleanName + Math.floor(Math.random() * 100));
+            suggestions.push(cleanName + Math.floor(Math.random() * 1000));
+            suggestions.push(cleanName + '_' + Math.floor(Math.random() * 100));
+        }
+        
+        // Generate suggestions based on email
+        if (emailPrefix && emailPrefix !== cleanName) {
+            suggestions.push(emailPrefix);
+            suggestions.push(emailPrefix + Math.floor(Math.random() * 100));
+            suggestions.push(emailPrefix + '_' + Math.floor(Math.random() * 100));
+        }
+        
+        // Add some generic suggestions
+        suggestions.push('user' + Math.floor(Math.random() * 10000));
+        suggestions.push('member' + Math.floor(Math.random() * 1000));
+        
+        // Remove duplicates and limit to 6 suggestions
+        return [...new Set(suggestions)].slice(0, 6);
+    },
+
+    updateUserUsername: async (userId: string, newUsername: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            // Check if username is available
+            const availability = await firestoreService.checkUsernameAvailability(newUsername, userId);
+            if (!availability.isValid) {
+                return { success: false, error: availability.error };
+            }
+            
+            // Update the user's username
+            const userRef = db.collection('users').doc(userId);
+            await userRef.update({ 
+                username: newUsername.trim().toLowerCase() 
+            });
+            
+            return { success: true };
+        } catch (error) {
+            console.error('Error updating username:', error);
+            return { success: false, error: 'Error updating username' };
+        }
+    },
+
     // Utility function to update existing negotiations with missing founder names
     updateNegotiationsWithFounderNames: async (): Promise<void> => {
         try {
@@ -1268,6 +1709,268 @@ export const firestoreService = {
         } catch (error) {
             console.error('Error updating negotiations with founder names:', error);
             throw error;
+        }
+    },
+
+    validateLocation: (location: string): { isValid: boolean; error?: string } => {
+        if (!location || !location.trim()) {
+            return { isValid: false, error: 'Location is required' };
+        }
+
+        const trimmedLocation = location.trim();
+        
+        // Check minimum length
+        if (trimmedLocation.length < 2) {
+            return { isValid: false, error: 'Location must be at least 2 characters long' };
+        }
+        
+        // Check maximum length
+        if (trimmedLocation.length > 100) {
+            return { isValid: false, error: 'Location must be less than 100 characters' };
+        }
+        
+        // Check for valid location format (city, country or city, state, country)
+        const locationPattern = /^[a-zA-Z\s,.-]+$/;
+        if (!locationPattern.test(trimmedLocation)) {
+            return { isValid: false, error: 'Location can only contain letters, spaces, commas, periods, and hyphens' };
+        }
+        
+        // Check if it contains at least one comma (suggesting city, country format)
+        if (!trimmedLocation.includes(',')) {
+            return { isValid: false, error: 'Please include country (e.g., "New York, USA" or "London, UK")' };
+        }
+        
+        // Check for reasonable location structure
+        const parts = trimmedLocation.split(',').map(part => part.trim());
+        if (parts.length < 2) {
+            return { isValid: false, error: 'Please include both city and country' };
+        }
+        
+        // Check that each part has reasonable length
+        for (const part of parts) {
+            if (part.length < 2) {
+                return { isValid: false, error: 'Each part of the location must be at least 2 characters' };
+            }
+        }
+        
+        return { isValid: true };
+    },
+
+
+
+    validateLocationFields: (country: string, state: string, city: string): { isValid: boolean; error?: string } => {
+        if (!country || !country.trim()) {
+            return { isValid: false, error: 'Country is required' };
+        }
+        
+        if (!state || !state.trim()) {
+            return { isValid: false, error: 'State/Province is required' };
+        }
+        
+        // City is optional, so we don't validate it
+        // State is required, and if provided, it should be valid
+        if (state && state.trim() && state.trim().length < 2) {
+            return { isValid: false, error: 'State must be at least 2 characters if provided' };
+        }
+        
+        return { isValid: true };
+    },
+
+    formatLocationString: (country: string, state: string, city: string): string => {
+        if (!country) return '';
+        
+        // Get full country name
+        const countries = getAllCountries();
+        const countryData = countries.find(c => c.code === country);
+        const countryName = countryData ? countryData.name : country;
+        
+        // Get full state name
+        let stateName = state;
+        if (state && state.trim()) {
+            const states = getStatesByCountry(country);
+            const stateData = states.find(s => s.code === state);
+            stateName = stateData ? stateData.name : state;
+        }
+        
+        // City name is already the full name
+        const cityName = city || '';
+        
+        // Format the location string
+        if (state && state.trim() && city && city.trim()) {
+            return `${cityName}, ${stateName}, ${countryName}`;
+        } else if (state && state.trim()) {
+            return `${stateName}, ${countryName}`;
+        } else if (city && city.trim()) {
+            return `${cityName}, ${countryName}`;
+        } else {
+            return countryName;
+        }
+    },
+
+    // Helper function to format existing location strings that might contain codes
+    formatExistingLocationString: (locationString: string): string => {
+        if (!locationString || !locationString.trim()) return '';
+        
+        // Split the location string by comma
+        const parts = locationString.split(',').map(part => part.trim());
+        
+        if (parts.length === 0) return '';
+        
+        // If it's already in full name format, return as is
+        // Check if the last part (country) is a known country name
+        const countries = getAllCountries();
+        const lastPart = parts[parts.length - 1];
+        const isCountryName = countries.some(c => c.name === lastPart);
+        
+        if (isCountryName) {
+            return locationString; // Already in full name format
+        }
+        
+        // Try to convert codes to full names
+        if (parts.length === 3) {
+            // Format: "City, State, Country" (with codes)
+            const [city, stateCode, countryCode] = parts;
+            
+            // Find country name
+            const countryData = countries.find(c => c.code === countryCode);
+            const countryName = countryData ? countryData.name : countryCode;
+            
+            // Find state name
+            let stateName = stateCode;
+            if (countryData) {
+                const states = getStatesByCountry(countryCode);
+                const stateData = states.find(s => s.code === stateCode);
+                stateName = stateData ? stateData.name : stateCode;
+            }
+            
+            return `${city}, ${stateName}, ${countryName}`;
+        } else if (parts.length === 2) {
+            // Format: "State, Country" or "City, Country" (with codes)
+            const [firstPart, countryCode] = parts;
+            
+            // Find country name
+            const countryData = countries.find(c => c.code === countryCode);
+            const countryName = countryData ? countryData.name : countryCode;
+            
+            // Check if first part is a state code
+            let stateName = firstPart;
+            if (countryData) {
+                const states = getStatesByCountry(countryCode);
+                const stateData = states.find(s => s.code === firstPart);
+                if (stateData) {
+                    stateName = stateData.name;
+                }
+            }
+            
+            return `${stateName}, ${countryName}`;
+        } else if (parts.length === 1) {
+            // Format: "Country" (with code)
+            const countryData = countries.find(c => c.code === parts[0]);
+            return countryData ? countryData.name : parts[0];
+        }
+        
+        return locationString; // Return as is if we can't parse it
+    },
+
+    // Phone number validation and utilities
+    getCountryCode: (countryCode: string): string => {
+        const countryCodes: { [key: string]: string } = {
+            'IN': '+91',  // India
+            'US': '+1',   // United States
+            'CA': '+1',   // Canada
+            'GB': '+44',  // United Kingdom
+            'AU': '+61',  // Australia
+            'DE': '+49',  // Germany
+            'FR': '+33',  // France
+            'IT': '+39',  // Italy
+            'ES': '+34',  // Spain
+            'NL': '+31',  // Netherlands
+            'CN': '+86',  // China
+            'JP': '+81',  // Japan
+            'KR': '+82',  // South Korea
+            'BR': '+55',  // Brazil
+            'AR': '+54',  // Argentina
+            'ZA': '+27',  // South Africa
+            'NG': '+234', // Nigeria
+            'AE': '+971', // UAE
+            'SA': '+966', // Saudi Arabia
+            'MX': '+52',  // Mexico
+            'NZ': '+64',  // New Zealand
+        };
+        return countryCodes[countryCode] || '+1';
+    },
+
+    validatePhoneNumber: (phoneNumber: string, countryCode: string): { isValid: boolean; error?: string; formatted?: string } => {
+        if (!phoneNumber || !phoneNumber.trim()) {
+            return { isValid: false, error: 'Phone number is required' };
+        }
+
+        // Remove all non-digit characters except +
+        const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+        
+        // Get expected country code
+        const expectedCountryCode = firestoreService.getCountryCode(countryCode);
+        
+        // Check if phone number already has country code
+        if (cleaned.startsWith('+')) {
+            // Phone number has country code, validate format
+            if (countryCode === 'IN') {
+                // Indian phone number validation
+                const indianPattern = /^\+91[6-9]\d{9}$/;
+                if (!indianPattern.test(cleaned)) {
+                    return { isValid: false, error: 'Invalid Indian phone number. Format: +91XXXXXXXXXX' };
+                }
+            } else {
+                // General international format validation
+                const internationalPattern = /^\+\d{1,4}\d{4,14}$/;
+                if (!internationalPattern.test(cleaned)) {
+                    return { isValid: false, error: 'Invalid international phone number format' };
+                }
+            }
+            return { isValid: true, formatted: cleaned };
+        } else {
+            // Phone number doesn't have country code, add it
+            if (countryCode === 'IN') {
+                // Indian phone number validation (without country code)
+                const indianPattern = /^[6-9]\d{9}$/;
+                if (!indianPattern.test(cleaned)) {
+                    return { isValid: false, error: 'Invalid Indian phone number. Format: XXXXXXXXXX (10 digits starting with 6-9)' };
+                }
+                return { isValid: true, formatted: expectedCountryCode + cleaned };
+            } else {
+                // General validation for other countries
+                if (cleaned.length < 7 || cleaned.length > 15) {
+                    return { isValid: false, error: 'Phone number must be 7-15 digits' };
+                }
+                return { isValid: true, formatted: expectedCountryCode + cleaned };
+            }
+        }
+    },
+
+    checkPhoneNumberAvailability: async (phoneNumber: string, currentUserId?: string): Promise<{ available: boolean; error?: string }> => {
+        try {
+            if (!phoneNumber || !phoneNumber.trim()) {
+                return { available: false, error: 'Phone number is required' };
+            }
+
+            // Clean the phone number
+            const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+            
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('phoneNumber', '==', cleaned));
+            const querySnapshot = await getDocs(q);
+
+            // Check if any user (other than current user) has this phone number
+            const existingUsers = querySnapshot.docs.filter(doc => doc.id !== currentUserId);
+            
+            if (existingUsers.length > 0) {
+                return { available: false, error: 'Phone number is already in use' };
+            }
+
+            return { available: true };
+        } catch (error) {
+            console.error('Error checking phone number availability:', error);
+            return { available: false, error: 'Error checking phone number availability' };
         }
     },
 };

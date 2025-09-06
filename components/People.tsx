@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 // ProfileCard import removed - component no longer exists
 import { UsersIcon, XCircleIcon } from './icons';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface PeopleProps {
     connections: User[];
@@ -62,7 +63,13 @@ const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, on
                                             <XCircleIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                                         </button>
                                     )}
-                                    <img src={user.avatarUrl} alt={user.name} className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full mb-3 sm:mb-4 border-2 sm:border-4 border-slate-700/50" />
+                                    {getSafeAvatarUrl(user) ? (
+                                        <img src={getSafeAvatarUrl(user)} alt={user.name} className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full mb-3 sm:mb-4 border-2 sm:border-4 border-slate-700/50" />
+                                    ) : (
+                                        <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full mb-3 sm:mb-4 border-2 sm:border-4 border-slate-700/50 bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-lg sm:text-xl font-bold">
+                                            {getUserInitials(user.name)}
+                                        </div>
+                                    )}
                                     <h3 className="font-semibold text-white text-sm sm:text-base lg:text-lg">{user.name}</h3>
                                     <p className="text-xs sm:text-sm text-slate-300">{user.role}</p>
                                     <p className="text-xs text-slate-500 mt-1">{user.location}</p>

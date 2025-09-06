@@ -6,6 +6,7 @@ import { firestoreService } from '../services/firestoreService';
 import firebase from 'firebase/compat/app';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface ChatPanelProps {
     user: User;
@@ -169,11 +170,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
                         <ArrowLeftIcon className="w-4 h-4 text-white" />
                     </motion.button>
                 )}
-                <img 
-                    src={user.avatarUrl} 
-                    alt={user.name} 
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700/50 shadow-lg" 
-                />
+                {getSafeAvatarUrl(user) ? (
+                    <img 
+                        src={getSafeAvatarUrl(user)} 
+                        alt={user.name} 
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700/50 shadow-lg" 
+                    />
+                ) : (
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700/50 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                        {getUserInitials(user.name)}
+                    </div>
+                )}
                 <div className="flex-grow min-w-0">
                     <h3 className="font-bold text-white text-base sm:text-lg truncate">{user.name}</h3>
                     <p className="text-xs text-slate-400">{user.role}</p>
@@ -224,11 +231,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
                                  )}
                              >
                                 {msg.senderId !== currentUser.id && (
-                                    <img 
-                                        src={user.avatarUrl} 
-                                        alt={`${user.name}'s avatar`} 
-                                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md" 
-                                    />
+                                    getSafeAvatarUrl(user) ? (
+                                        <img 
+                                            src={getSafeAvatarUrl(user)} 
+                                            alt={`${user.name}'s avatar`} 
+                                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md" 
+                                        />
+                                    ) : (
+                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                                            {getUserInitials(user.name)}
+                                        </div>
+                                    )
                                 )}
                                                                                                   <div className="flex flex-col">
                                      <div className={cn(
@@ -248,11 +261,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
                                      </p>
                                  </div>
                                 {msg.senderId === currentUser.id && (
-                                    <img 
-                                        src={currentUser.avatarUrl} 
-                                        alt="Your avatar" 
-                                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md" 
-                                    />
+                                    getSafeAvatarUrl(currentUser) ? (
+                                        <img 
+                                            src={getSafeAvatarUrl(currentUser)} 
+                                            alt="Your avatar" 
+                                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md" 
+                                        />
+                                    ) : (
+                                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-slate-700/50 shadow-md bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                                            {getUserInitials(currentUser.name)}
+                                        </div>
+                                    )
                                 )}
                             </motion.div>
                         ))}

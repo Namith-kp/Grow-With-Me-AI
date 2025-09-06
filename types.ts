@@ -22,8 +22,12 @@ export interface User {
     email: string;
     phone?: string;
     name: string;
+    username: string; // Unique username for each user
     role: Role;
-    location: string;
+    location: string; // Keep for backward compatibility
+    country?: string; // New separate location fields
+    state?: string;
+    city?: string;
     dateOfBirth: string;
     gender: string;
     skills: string[];
@@ -34,6 +38,7 @@ export interface User {
     connections: string[];
     pendingConnections?: string[];
     investorProfile?: InvestorProfile;
+    customAvatar?: boolean; // Flag to indicate if user has uploaded a custom avatar
 }
 
 export interface Match {
@@ -99,7 +104,9 @@ export enum NotificationType {
     CONNECTION_REQUEST = 'connection_request',
     MESSAGE = 'message',
     NEGOTIATION_UPDATE = 'negotiation_update',
-    NEW_NEGOTIATION = 'new_negotiation'
+    NEW_NEGOTIATION = 'new_negotiation',
+    JOIN_REQUEST = 'join_request',
+    JOIN_REQUEST_RESPONSE = 'join_request_response'
 }
 
 export interface Notification {
@@ -116,6 +123,13 @@ export interface Notification {
         senderName?: string;
         responseStatus?: 'approved' | 'rejected';
         respondedAt?: Date;
+        joinRequestId?: string;
+        ideaId?: string;
+        ideaTitle?: string;
+        developerId?: string;
+        developerName?: string;
+        founderId?: string;
+        founderName?: string;
     };
     isRead: boolean;
     timestamp: Date;
@@ -160,7 +174,9 @@ export interface Idea {
     id: string;
     founderId: string;
     founderName: string;
+    founderUsername?: string;
     founderAvatar: string;
+    founderCustomAvatar?: boolean; // Flag to indicate if founder has custom avatar
     title: string;
     description: string;
     requiredSkills: string[];
@@ -183,6 +199,7 @@ export interface IdeaJoinRequest {
     developerName: string;
     developerAvatar: string;
     founderId: string;
+    founderName: string;
     status: 'pending' | 'approved' | 'rejected';
     timestamp: Date;
 }
@@ -193,9 +210,11 @@ export interface Negotiation {
     ideaTitle: string;
     investorId: string;
     investorName: string;
+    investorUsername?: string;
     investorAvatar: string;
     founderId: string;
     founderName: string;
+    founderUsername?: string;
     status: 'pending' | 'active' | 'closed' | 'rejected' | 'accepted';
     timestamp: Date;
     offers: Offer[];

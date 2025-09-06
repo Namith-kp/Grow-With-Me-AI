@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Notification, NotificationType, User, View, ConnectionRequest } from '../types';
 import { firestoreService } from '../services/firestoreService';
-import { UserPlusIcon, MessageSquareIcon, TrendingUpIcon, CheckIcon, ArrowLeftIcon, XIcon } from './icons';
+import { UserPlusIcon, MessageSquareIcon, TrendingUpIcon, CheckIcon, ArrowLeftIcon, XIcon, UserIcon } from './icons';
 
 interface NotificationsPageProps {
     currentUser: User;
     onNavigateToView: (view: View, data?: any) => void;
+    onNavigateToProfile?: (user: User) => void;
     onBack: () => void;
 }
 
 const NotificationsPage: React.FC<NotificationsPageProps> = ({
     currentUser,
     onNavigateToView,
+    onNavigateToProfile,
     onBack
 }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -19,7 +21,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
     const [loading, setLoading] = useState(true);
     const [processingRequest, setProcessingRequest] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [activeSection, setActiveSection] = useState<'all' | 'requests' | 'messages' | 'negotiations'>('all');
+    const [activeSection, setActiveSection] = useState<'all' | 'requests' | 'messages' | 'negotiations' | 'joinRequests'>('all');
 
     // Reset error state when component mounts or user changes
     useEffect(() => {
@@ -254,6 +256,49 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
         await firestoreService.markAllNotificationsAsRead(currentUser.id);
     };
 
+    const handleJoinRequestAction = async (joinRequestId: string, action: 'approved' | 'rejected') => {
+        console.log('handleJoinRequestAction called:', { joinRequestId, action });
+        // Find the notification first to get its ID
+        const notification = notifications.find(n => n.data?.joinRequestId === joinRequestId);
+        if (!notification) {
+            console.error('Notification not found for joinRequestId:', joinRequestId);
+            setError('Notification not found. Please refresh and try again.');
+            return;
+        }
+        
+        setProcessingRequest(notification.id);
+        try {
+            await firestoreService.updateJoinRequest(joinRequestId, action);
+            console.log('Join request updated successfully');
+            // Mark the notification as read
+            await firestoreService.markNotificationAsRead(notification.id);
+            console.log('Notification marked as read');
+        } catch (error) {
+            console.error('Failed to update join request:', error);
+            setError('Failed to update join request. Please try again.');
+        } finally {
+            setProcessingRequest(null);
+        }
+    };
+
+    const handleViewProfile = async (userId: string) => {
+        try {
+            const userProfile = await firestoreService.getUserProfile(userId);
+            if (userProfile) {
+                if (onNavigateToProfile) {
+                    onNavigateToProfile(userProfile);
+                } else {
+                    onNavigateToView(View.PROFILE, { selectedUser: userProfile });
+                }
+            } else {
+                setError('User profile not found.');
+            }
+        } catch (error) {
+            console.error('Failed to load user profile:', error);
+            setError('Failed to load user profile. Please try again.');
+        }
+    };
+
     const getNotificationIcon = (type: NotificationType) => {
         switch (type) {
             case NotificationType.CONNECTION_REQUEST:
@@ -263,6 +308,9 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
             case NotificationType.NEGOTIATION_UPDATE:
             case NotificationType.NEW_NEGOTIATION:
                 return <TrendingUpIcon className="w-6 h-6 text-purple-500" />;
+            case NotificationType.JOIN_REQUEST:
+            case NotificationType.JOIN_REQUEST_RESPONSE:
+                return <UserPlusIcon className="w-6 h-6 text-orange-500" />;
             default:
                 return <div className="w-6 h-6 bg-gray-500 rounded-full" />;
         }
@@ -276,12 +324,14 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                 return notifications.filter(n => n.type === NotificationType.MESSAGE);
             case 'negotiations':
                 return notifications.filter(n => n.type === NotificationType.NEGOTIATION_UPDATE || n.type === NotificationType.NEW_NEGOTIATION);
+            case 'joinRequests':
+                return notifications.filter(n => n.type === NotificationType.JOIN_REQUEST || n.type === NotificationType.JOIN_REQUEST_RESPONSE);
             default:
                 return notifications;
         }
     };
 
-    const getSectionCount = (section: 'all' | 'requests' | 'messages' | 'negotiations') => {
+    const getSectionCount = (section: 'all' | 'requests' | 'messages' | 'negotiations' | 'joinRequests') => {
         switch (section) {
             case 'requests':
                 return notifications.filter(n => n.type === NotificationType.CONNECTION_REQUEST).length;
@@ -289,6 +339,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                 return notifications.filter(n => n.type === NotificationType.MESSAGE).length;
             case 'negotiations':
                 return notifications.filter(n => n.type === NotificationType.NEGOTIATION_UPDATE || n.type === NotificationType.NEW_NEGOTIATION).length;
+            case 'joinRequests':
+                return notifications.filter(n => n.type === NotificationType.JOIN_REQUEST || n.type === NotificationType.JOIN_REQUEST_RESPONSE).length;
             default:
                 return notifications.length;
         }
@@ -424,29 +476,43 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                 </div>
                             ) : notification.data?.connectionRequestId ? (
                                 // Show action buttons if not yet responded to
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleConnectionRequest(notification, 'accept');
-                                        }}
-                                        disabled={processingRequest === notification.id}
-                                        className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:bg-green-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
-                                    >
-                                        <CheckIcon className="w-3 h-3" />
-                                        <span>Accept</span>
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleConnectionRequest(notification, 'decline');
-                                        }}
-                                        disabled={processingRequest === notification.id}
-                                        className="px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:bg-red-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
-                                    >
-                                        <XIcon className="w-3 h-3" />
-                                        <span>Decline</span>
-                                    </button>
+                                <div className="space-y-2">
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleConnectionRequest(notification, 'accept');
+                                            }}
+                                            disabled={processingRequest === notification.id}
+                                            className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:bg-green-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
+                                        >
+                                            <CheckIcon className="w-3 h-3" />
+                                            <span>Accept</span>
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleConnectionRequest(notification, 'decline');
+                                            }}
+                                            disabled={processingRequest === notification.id}
+                                            className="px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:bg-red-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
+                                        >
+                                            <XIcon className="w-3 h-3" />
+                                            <span>Decline</span>
+                                        </button>
+                                    </div>
+                                    {notification.data?.senderId && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewProfile(notification.data.senderId);
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors flex items-center space-x-1.5 text-sm"
+                                        >
+                                            <UserIcon className="w-3 h-3" />
+                                            <span>View Profile</span>
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-1">
@@ -465,6 +531,216 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                         Remove Invalid Notification
                                     </button>
                                 </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            // Join Request Notifications
+            if (notification.type === NotificationType.JOIN_REQUEST || notification.type === NotificationType.JOIN_REQUEST_RESPONSE) {
+                console.log('Rendering join request notification:', {
+                    type: notification.type,
+                    data: notification.data,
+                    joinRequestId: notification.data?.joinRequestId,
+                    currentUserId: currentUser.id,
+                    notificationUserId: notification.userId
+                });
+                return (
+                    <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                            {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-1">
+                                <h3 className={`text-base font-semibold ${
+                                    notification.isRead ? 'text-white/80' : 'text-white'
+                                }`}>
+                                    {notification.title || 'Join Request'}
+                                </h3>
+                                <span className="text-xs text-white/50 ml-3 flex-shrink-0">
+                                    {notification.timestamp && (notification.isRead 
+                                        ? formatDetailedTimestamp(notification.timestamp)
+                                        : formatTimeAgo(notification.timestamp)
+                                    )}
+                                </span>
+                            </div>
+                            <p className={`text-sm mb-2 ${
+                                notification.isRead ? 'text-white/60' : 'text-white/80'
+                            }`}>
+                                {notification.message || 'You have a new join request'}
+                            </p>
+                            
+                            {/* Join Request Actions */}
+                            {notification.type === NotificationType.JOIN_REQUEST_RESPONSE ? (
+                                // Show response status for both developers and founders
+                                <div className="space-y-1">
+                                    <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                                        notification.data?.responseStatus === 'approved' 
+                                            ? 'bg-green-600/20 text-green-400 border border-green-500/30' 
+                                            : 'bg-red-600/20 text-red-400 border border-red-500/30'
+                                    }`}>
+                                        {notification.data?.responseStatus === 'approved' ? (
+                                            <>
+                                                <CheckIcon className="w-3 h-3 mr-1" />
+                                                <span>Approved</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <XIcon className="w-3 h-3 mr-1" />
+                                                <span>Declined</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    {notification.data?.respondedAt && (
+                                        <p className="text-xs text-white/50">
+                                            Responded on {formatDetailedTimestamp(notification.data.respondedAt)}
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-white/60">
+                                        Idea: {notification.data?.ideaTitle || 'Unknown Idea'}
+                                    </p>
+                                    <p className="text-xs text-white/60">
+                                        {notification.data?.developerName ? `Developer: ${notification.data.developerName}` : ''}
+                                    </p>
+                                    {notification.data?.founderId && currentUser.id === notification.data.developerId && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewProfile(notification.data.founderId);
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors flex items-center space-x-1.5 text-sm mt-2"
+                                        >
+                                            <UserIcon className="w-3 h-3" />
+                                            <span>View Founder Profile</span>
+                                        </button>
+                                    )}
+                                    {notification.data?.developerId && currentUser.id === notification.data.founderId && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewProfile(notification.data.developerId);
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors flex items-center space-x-1.5 text-sm mt-2"
+                                        >
+                                            <UserIcon className="w-3 h-3" />
+                                            <span>View Profile</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                // Show action buttons for founders (only for pending JOIN_REQUEST notifications)
+                                notification.data?.responseStatus ? (
+                                    // Show response status for already responded notifications
+                                    <div className="space-y-2">
+                                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                            notification.data?.responseStatus === 'approved' 
+                                                ? 'bg-green-600/20 text-green-400 border border-green-500/30' 
+                                                : 'bg-red-600/20 text-red-400 border border-red-500/30'
+                                        }`}>
+                                            {notification.data?.responseStatus === 'approved' ? (
+                                                <>
+                                                    <CheckIcon className="w-3 h-3 mr-1" />
+                                                    <span>Approved</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <XIcon className="w-3 h-3 mr-1" />
+                                                    <span>Declined</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        {notification.data?.respondedAt && (
+                                            <p className="text-xs text-white/50">
+                                                Responded on {formatDetailedTimestamp(notification.data.respondedAt)}
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-white/60">
+                                            Idea: {notification.data?.ideaTitle || 'Unknown Idea'}
+                                        </p>
+                                        <p className="text-xs text-white/60">
+                                            {notification.data?.developerName ? `Developer: ${notification.data.developerName}` : ''}
+                                        </p>
+                                        {notification.data?.developerId && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewProfile(notification.data.developerId);
+                                                }}
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors flex items-center space-x-1.5 text-sm mt-2"
+                                            >
+                                                <UserIcon className="w-3 h-3" />
+                                                <span>View Profile</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    // Show action buttons for pending notifications
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-white/60">
+                                                Idea: {notification.data?.ideaTitle || 'Unknown Idea'}
+                                            </p>
+                                            <p className="text-xs text-white/60">
+                                                From: {notification.data?.developerName || 'Unknown Developer'}
+                                            </p>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('Approve button clicked', { 
+                                                        joinRequestId: notification.data?.joinRequestId,
+                                                        notificationId: notification.id,
+                                                        notificationData: notification.data
+                                                    });
+                                                    if (notification.data?.joinRequestId) {
+                                                        handleJoinRequestAction(notification.data.joinRequestId, 'approved');
+                                                    } else {
+                                                        console.error('No joinRequestId found in notification data');
+                                                    }
+                                                }}
+                                                disabled={processingRequest === notification.id}
+                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:bg-green-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
+                                            >
+                                                <CheckIcon className="w-3 h-3" />
+                                                <span>Approve</span>
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('Decline button clicked', { 
+                                                        joinRequestId: notification.data?.joinRequestId,
+                                                        notificationId: notification.id,
+                                                        notificationData: notification.data
+                                                    });
+                                                    if (notification.data?.joinRequestId) {
+                                                        handleJoinRequestAction(notification.data.joinRequestId, 'rejected');
+                                                    } else {
+                                                        console.error('No joinRequestId found in notification data');
+                                                    }
+                                                }}
+                                                disabled={processingRequest === notification.id}
+                                                className="px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:bg-red-700 text-white rounded-md transition-colors flex items-center space-x-1.5 disabled:opacity-50 text-sm"
+                                            >
+                                                <XIcon className="w-3 h-3" />
+                                                <span>Decline</span>
+                                            </button>
+                                        </div>
+                                        {notification.data?.developerId && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewProfile(notification.data.developerId);
+                                                }}
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors flex items-center space-x-1.5 text-sm"
+                                            >
+                                                <UserIcon className="w-3 h-3" />
+                                                <span>View Profile</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>
@@ -573,7 +849,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                             { key: 'all', label: 'All' },
                             { key: 'requests', label: 'Requests' },
                             { key: 'messages', label: 'Messages' },
-                            { key: 'negotiations', label: 'Negotiations' }
+                            { key: 'negotiations', label: 'Negotiations' },
+                            { key: 'joinRequests', label: 'Join Requests' }
                         ].map((section) => (
                             <button
                                 key={section.key}
@@ -690,11 +967,12 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                     <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
                         {/* Section Header */}
                         <div className="px-2 mb-4 sm:mb-6">
-                            <h2 className="text-base sm:text-lg font-semibold text-white">
+                                <h2 className="text-base sm:text-lg font-semibold text-white">
                                 {activeSection === 'all' && ''}
                                 {activeSection === 'requests' && ''}
                                 {activeSection === 'messages' && ''}
                                 {activeSection === 'negotiations' && ''}
+                                {activeSection === 'joinRequests' && ''}
                             </h2>
                             <p className="text-xs sm:text-sm text-white/60 mt-1">
                                 {(() => {
@@ -792,18 +1070,21 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                     {activeSection === 'requests' && <UserPlusIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />}
                                     {activeSection === 'messages' && <MessageSquareIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />}
                                     {activeSection === 'negotiations' && <TrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />}
+                                    {activeSection === 'joinRequests' && <UserPlusIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />}
                                     {activeSection === 'all' && <MessageSquareIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white/50" />}
                                 </div>
                                 <h3 className="text-base sm:text-lg font-semibold text-white mb-2">
                                     {activeSection === 'requests' && 'No Connection Requests'}
                                     {activeSection === 'messages' && 'No Messages'}
                                     {activeSection === 'negotiations' && 'No Negotiations'}
+                                    {activeSection === 'joinRequests' && 'No Join Requests'}
                                     {activeSection === 'all' && 'No Notifications'}
                                 </h3>
                                 <p className="text-white/60 text-xs sm:text-sm max-w-md">
                                     {activeSection === 'requests' && 'You haven\'t received any connection requests yet.'}
                                     {activeSection === 'messages' && 'You haven\'t received any messages yet.'}
                                     {activeSection === 'negotiations' && 'You haven\'t received any negotiation updates yet.'}
+                                    {activeSection === 'joinRequests' && 'You haven\'t received any join requests yet.'}
                                     {activeSection === 'all' && 'You haven\'t received any notifications yet.'}
                                 </p>
                             </div>

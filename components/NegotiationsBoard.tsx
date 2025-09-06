@@ -262,8 +262,8 @@ const NegotiationsBoard: React.FC<NegotiationsBoardProps> = ({ user, setIsMobile
                                                     </div>
                                                     <p className="text-sm text-slate-400 truncate pr-2">
                                                         {isFounder 
-                                                            ? `with ${neg.investorName}`
-                                                            : `with ${neg.founderName}`
+                                                            ? `with ${neg.investorName}${neg.investorUsername ? ` (@${neg.investorUsername})` : ''}`
+                                                            : `with ${neg.founderName}${neg.founderUsername ? ` (@${neg.founderUsername})` : ''}`
                                                         }
                                                     </p>
                                                 </div>
@@ -322,8 +322,8 @@ const NegotiationsBoard: React.FC<NegotiationsBoardProps> = ({ user, setIsMobile
                                                     </div>
                                                     <p className="text-sm text-slate-400 truncate pr-2">
                                                         {isFounder 
-                                                            ? `with ${neg.investorName}`
-                                                            : `with ${neg.founderName}`
+                                                            ? `with ${neg.investorName}${neg.investorUsername ? ` (@${neg.investorUsername})` : ''}`
+                                                            : `with ${neg.founderName}${neg.founderUsername ? ` (@${neg.founderUsername})` : ''}`
                                                         }
                                                     </p>
                                                 </div>
@@ -382,8 +382,8 @@ const NegotiationsBoard: React.FC<NegotiationsBoardProps> = ({ user, setIsMobile
                                                     </div>
                                                     <p className="text-sm text-slate-400 truncate pr-2">
                                                         {isFounder 
-                                                            ? `with ${neg.investorName}`
-                                                            : `with ${neg.founderName}`
+                                                            ? `with ${neg.investorName}${neg.investorUsername ? ` (@${neg.investorUsername})` : ''}`
+                                                            : `with ${neg.founderName}${neg.founderUsername ? ` (@${neg.founderUsername})` : ''}`
                                                         }
                                                     </p>
                                                 </div>

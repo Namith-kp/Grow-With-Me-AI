@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Idea, Role, User, IdeaJoinRequest, Comment, Negotiation } from '../types';
 import { firestoreService } from '../services/firestoreService';
-import { PlusIcon, LightbulbIcon, UsersIcon, CodeIcon, CheckIcon, HeartIcon, ChatBubbleLeftRightIcon, TrashIcon, PencilIcon } from './icons';
+import { PlusIcon, LightbulbIcon, UsersIcon, CodeIcon, CheckIcon, HeartIcon, ChatBubbleLeftRightIcon, TrashIcon, PencilIcon, StarIcon } from './icons';
 import JoinRequests from './JoinRequests';
 import TeamManagementModal from './TeamManagementModal';
 import NegotiationDeck from './NegotiationDeck';
 import IdeaDetailModal from './IdeaDetailModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 // Custom hook for responsive animation timing
 const useResponsiveAnimation = () => {
@@ -79,6 +80,11 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
             setError('Please fill out all fields and add at least one required skill.');
             return;
         }
+        
+        if (title.length > 40) {
+            setError('Idea title must be 60 characters or less.');
+            return;
+        }
         setError(null);
         setIsSubmitting(true);
 
@@ -106,7 +112,9 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
             const newIdea: Omit<Idea, 'id'> = {
                 founderId: user.id,
                 founderName: user.name,
-                founderAvatar: user.avatarUrl,
+                founderUsername: user.username,
+                founderAvatar: (user as any).photoURL || user.avatarUrl,
+                founderCustomAvatar: user.customAvatar || false,
                 title,
                 description,
                 requiredSkills,
@@ -153,8 +161,15 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g., AI-Powered Personal Chef"
+                    maxLength={40}
                     className="w-full bg-slate-800/50 border border-slate-700/30 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
                 />
+                <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-slate-400">Keep it concise and catchy</span>
+                    <span className={`text-xs ${title.length > 30 ? 'text-orange-400' : 'text-slate-400'}`}>
+                        {title.length}/40
+                    </span>
+                </div>
             </div>
             <div>
                 <label htmlFor="description" className="block text-sm font-medium text-slate-300 mb-1">Detailed Description</label>
@@ -279,15 +294,52 @@ interface IdeaCardProps {
     negotiationStatuses?: Record<string, string>;
     investorCounts?: Record<string, number>;
     onNavigateToNegotiation?: (negotiationId: string) => void;
+    onOpenDetail?: (idea: Idea) => void;
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendingRequest, onManageTeam, joinRequests, onLike, onComment, onDeleteComment, onEdit, onStartNegotiation, negotiationStatuses, investorCounts, onNavigateToNegotiation }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendingRequest, onManageTeam, joinRequests, onLike, onComment, onDeleteComment, onEdit, onStartNegotiation, negotiationStatuses, investorCounts, onNavigateToNegotiation, onOpenDetail }) => {
     const isFounder = idea.founderId === user.id;
-    const canJoin = user.role === Role.Developer && !idea.team.includes(user.id);
     const hasJoined = idea.team.includes(user.id);
-    const isRequestApproved = joinRequests.some(
-        (r) => r.ideaId === idea.id && r.developerId === user.id && r.status === 'approved'
+    
+    // Get join request status for current developer
+    const userJoinRequests = joinRequests.filter(
+        (r) => r.ideaId === idea.id && r.developerId === user.id
     );
+    
+    // Get the most recent request status
+    const latestRequest = userJoinRequests.length > 0 ? userJoinRequests.sort((a, b) => {
+        try {
+            const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : a.timestamp.toDate().getTime();
+            const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : b.timestamp.toDate().getTime();
+            return bTime - aTime;
+        } catch (error) {
+            console.error('Error sorting join requests by timestamp:', error);
+            return 0;
+        }
+    })[0] : null;
+    
+    const joinRequestStatus = latestRequest?.status || null;
+    const hasAnyPendingRequest = userJoinRequests.some(r => r.status === 'pending');
+    // Check if developer can see this idea (for private ideas, only if connected to founder)
+    const canSeeIdea = idea.visibility === 'public' || 
+                      (idea.visibility === 'private' && user.connections?.includes(idea.founderId)) ||
+                      idea.founderId === user.id;
+    
+    const canJoin = user.role === Role.Developer && !hasJoined && !hasAnyPendingRequest && canSeeIdea;
+    
+    // Debug logging for private ideas
+    if (idea.visibility === 'private' && user.role === Role.Developer) {
+        console.log('🔍 Private idea for developer:', {
+            ideaId: idea.id,
+            ideaTitle: idea.title,
+            founderId: idea.founderId,
+            currentUserId: user.id,
+            joinRequestStatus,
+            hasAnyPendingRequest,
+            canJoin,
+            userJoinRequests: userJoinRequests.length
+        });
+    }
     const [commentText, setCommentText] = useState('');
     const [showComments, setShowComments] = useState(false);
     const [showNegotiation, setShowNegotiation] = useState(false);
@@ -312,26 +364,55 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
         try {
             // Try to find or create negotiation for this idea and investor
             let negotiationData = null;
-            // Try to get negotiation from Firestore
-            const negotiations = await new Promise<Negotiation[]>(resolve => {
-                firestoreService.getNegotiationsForInvestor(user.id, resolve);
+            
+            // Try to get negotiation from Firestore using a promise wrapper
+            const negotiations = await new Promise<Negotiation[]>((resolve, reject) => {
+                const unsubscribe = firestoreService.getNegotiationsForInvestor(user.id, (data) => {
+                    unsubscribe(); // Unsubscribe after first data
+                    resolve(data);
+                });
+                
+                // Set a timeout to avoid hanging
+                setTimeout(() => {
+                    unsubscribe();
+                    reject(new Error('Timeout waiting for negotiations'));
+                }, 5000);
             });
+            
             negotiationData = negotiations.find((n) => n.ideaId === idea.id);
+            console.log('Found existing negotiations:', negotiations.length, 'Looking for ideaId:', idea.id);
+            
             if (!negotiationData) {
                 // Create negotiation if not exists
-                await firestoreService.createNegotiationRequest(idea, user);
-                // Refetch
-                const negotiations2 = await new Promise<Negotiation[]>(resolve => {
-                    firestoreService.getNegotiationsForInvestor(user.id, resolve);
+                const negotiationId = await firestoreService.createNegotiationRequest(idea, user);
+                
+                // Refetch negotiations after creation
+                const negotiations2 = await new Promise<Negotiation[]>((resolve, reject) => {
+                    const unsubscribe = firestoreService.getNegotiationsForInvestor(user.id, (data) => {
+                        unsubscribe(); // Unsubscribe after first data
+                        resolve(data);
+                    });
+                    
+                    // Set a timeout to avoid hanging
+                    setTimeout(() => {
+                        unsubscribe();
+                        reject(new Error('Timeout waiting for negotiations'));
+                    }, 5000);
                 });
-                negotiationData = negotiations2.find((n) => n.ideaId === idea.id);
+                
+                negotiationData = negotiations2.find((n) => n.id === negotiationId);
             }
             
             // Navigate to negotiations tab with the specific negotiation
             if (onNavigateToNegotiation && negotiationData) {
+                console.log('Navigating to negotiation:', negotiationData.id);
                 onNavigateToNegotiation(negotiationData.id);
+            } else {
+                console.error('Negotiation not found after creation. Available negotiations:', negotiations);
+                alert('Negotiation not found after creation.');
             }
         } catch (err) {
+            console.error('Failed to open negotiation:', err);
             alert('Failed to open negotiation.');
         } finally {
             setNegotiationLoading(false);
@@ -377,35 +458,78 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 
             {/* Card content */}
             <div className="relative z-20 bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 h-full flex flex-col">
-                {/* Top row: avatar, name, tag, actions */}
-                <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2 sm:mb-4">
-                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                        <img src={idea.founderAvatar} alt={idea.founderName} className="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-slate-700 shrink-0 shadow-lg" />
-                        <div className="min-w-0">
-                            <h3 className="text-base sm:text-xl font-bold text-white break-words">{idea.title}</h3>
-                            <div className="flex items-center gap-1">
-                                <span className="text-xs sm:text-sm text-slate-400 truncate">{idea.founderName}</span>
-                                <span className={cn(
-                                    "ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold",
-                                    "bg-purple-900/30 text-purple-300 border border-purple-700/30"
-                                )}>Founder</span>
-                                {/* Visibility Badge */}
-                                <span className={cn(
-                                    "ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold",
-                                    idea.visibility === 'public' 
-                                        ? "bg-green-900/30 text-green-300 border border-green-700/30"
-                                        : "bg-orange-900/30 text-orange-300 border border-orange-700/30"
-                                )}>
-                                    {idea.visibility === 'public' ? '🌍 Public' : '🔒 Private'}
-                                </span>
-                            </div>
+                {/* Row 1: Idea Title and Visibility */}
+                <div className="flex items-start justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
+                    <h3 className="text-sm sm:text-base font-bold text-white break-words flex-1 pr-2">{idea.title}</h3>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={cn(
+                            "px-2 py-1 rounded-full text-[10px] sm:text-xs font-semibold",
+                            idea.visibility === 'public' 
+                                ? "bg-green-900/30 text-green-300 border border-green-700/30"
+                                : "bg-orange-900/30 text-orange-300 border border-orange-700/30"
+                        )}>
+                            {idea.visibility === 'public' ? '🌍 Public' : '🔒 Private'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Row 2: Avatar, Full Name, Username, and User Type */}
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    {(() => {
+                        // Always use the stored founderAvatar from the idea for consistency across all users
+                        const avatarSource = idea.founderAvatar;
+                        
+                        // Create a user-like object with the stored avatar and customAvatar flag
+                        // If it's a custom avatar, put it in photoURL field as expected by getSafeAvatarUrl
+                        const userObj = idea.founderCustomAvatar ? {
+                            photoURL: avatarSource,
+                            customAvatar: true
+                        } : {
+                            avatarUrl: avatarSource,
+                            customAvatar: false
+                        };
+                        const safeUrl = getSafeAvatarUrl(userObj);
+                        
+                        if (safeUrl) {
+                            return (
+                                <img src={safeUrl} alt={idea.founderName} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700 shrink-0 shadow-lg" />
+                            );
+                        } else {
+                            return (
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700 shrink-0 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs sm:text-sm font-bold">
+                                    {getUserInitials(idea.founderName)}
+                                </div>
+                            );
+                        }
+                    })()}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm sm:text-base font-medium text-slate-200 truncate">{idea.founderName}</span>
+                            <span className="text-xs sm:text-sm text-slate-400 truncate">@{idea.founderName?.toLowerCase().replace(/\s+/g, '') || 'unknown'}</span>
+                            <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold flex-shrink-0",
+                                "bg-purple-900/30 text-purple-300 border border-purple-700/30"
+                            )}>Founder</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Description and details */}
                 <div className="flex flex-col gap-1 sm:gap-2 flex-grow">
-                    <p className="text-slate-300 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 sm:line-clamp-4">{idea.description}</p>
+                    <div className="text-slate-300 text-xs sm:text-sm mb-1 sm:mb-2">
+                        <p className="line-clamp-2 sm:line-clamp-3">{idea.description}</p>
+                        {idea.description && idea.description.length > 100 && (
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenDetail?.(idea);
+                                }}
+                                className="text-blue-400 hover:text-blue-300 text-xs font-medium mt-1 transition-colors"
+                            >
+                                Read more
+                            </button>
+                        )}
+                    </div>
                     {(user.role === Role.Investor || isFounder) && idea.investmentDetails && (
                         <div className="hidden sm:block mb-2 p-3 bg-purple-900/20 border border-purple-800/30 rounded-xl text-xs">
                             <h4 className="font-bold text-purple-300 mb-2">Investment Details</h4>
@@ -478,13 +602,27 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                         <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
                             {isFounder ? (
                                 <span className="text-xs sm:text-sm font-semibold text-purple-400">Your Idea</span>
-                            ) : hasJoined || isRequestApproved ? (
+                            ) : hasJoined ? (
                                 <span className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-emerald-400">
                                     <CheckIcon className="w-5 h-5" />
                                     Joined
                                 </span>
-                            ) : hasPendingRequest ? (
-                                <span className="text-xs sm:text-sm font-semibold text-amber-400">Request Sent</span>
+                            ) : joinRequestStatus === 'approved' && canSeeIdea ? (
+                                <span className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-emerald-400">
+                                    <CheckIcon className="w-5 h-5" />
+                                    Request Approved
+                                </span>
+                            ) : joinRequestStatus === 'rejected' && canSeeIdea ? (
+                                <span className="flex items-center gap-2">
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onJoinRequest(idea); }}
+                                        className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-1 px-2 sm:py-2 sm:px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/25 text-xs sm:text-sm"
+                                    >
+                                        Send Join Request Again
+                                    </button>
+                                </span>
+                            ) : hasAnyPendingRequest && canSeeIdea ? (
+                                <span className="text-xs sm:text-sm font-semibold text-amber-400">Request Pending</span>
                             ) : canJoin ? (
                                 <span className="flex items-center gap-2">
                                     <button
@@ -730,6 +868,14 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                 hasMore = more;
             }
 
+            console.log('🔍 Fetched ideas:', {
+                total: fetchedIdeas.length,
+                public: fetchedIdeas.filter(i => i.visibility === 'public').length,
+                private: fetchedIdeas.filter(i => i.visibility === 'private').length,
+                visibilityFilter,
+                userId: user.id
+            });
+            
             setIdeas(fetchedIdeas);
             setLastIdeaDoc(lastDoc);
             setHasMoreIdeas(hasMore);
@@ -852,6 +998,15 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
         firestoreService.getAcceptedInvestorCountForIdeas().then(setInvestorCounts);
     }, []);
 
+    // Load join requests for developers
+    useEffect(() => {
+        if (user.role === Role.Developer) {
+            return firestoreService.getJoinRequestsForDeveloper(user.id, (requests) => {
+                setJoinRequests(requests);
+            });
+        }
+    }, [user.id, user.role]);
+
     const handleIdeaPosted = () => {
         setShowForm(false);
         setEditingIdea(null);
@@ -875,7 +1030,16 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
 
     const handleJoinRequest = async (idea: Idea) => {
         try {
+            // Validate required fields
+            if (!idea.founderName) {
+                console.error('Idea missing founderName:', idea);
+                alert('Error: Idea information is incomplete. Please try again.');
+                return;
+            }
+
+            // Always create a new join request (this allows multiple requests)
             await firestoreService.createJoinRequest(idea, user);
+            
             // Optimistically update UI
             setJoinRequests(prev => [...prev, {
                 id: 'temp-id',
@@ -885,6 +1049,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                 developerName: user.name,
                 developerAvatar: user.avatarUrl,
                 founderId: idea.founderId,
+                founderName: idea.founderName,
                 status: 'pending',
                 timestamp: new Date(),
             }]);
@@ -978,7 +1143,11 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
         }
     };
 
-    const pendingRequestsForDeveloper: string[] = [];
+    // Get pending requests for the current developer
+    const pendingRequestsForDeveloper: string[] = joinRequests
+        .filter(request => request.developerId === user.id && request.status === 'pending')
+        .map(request => request.ideaId);
+    
     const pendingRequestsForFounder: IdeaJoinRequest[] = [];
 
     return (
@@ -1119,6 +1288,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                             negotiationStatuses={negotiationStatuses}
                             investorCounts={investorCounts}
                             onNavigateToNegotiation={onNavigateToNegotiation}
+                            onOpenDetail={(idea) => { setSelectedIdea(idea); setDetailOpen(true); }}
                         />
                     </div>
                 ))}
@@ -1128,6 +1298,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                             idea={selectedIdea}
                             open={detailOpen}
                             onClose={() => { setDetailOpen(false); setTimeout(() => setSelectedIdea(null), 200); }}
+                            currentUser={user}
                         />
                     </React.Suspense>
                 )}
@@ -1235,6 +1406,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                                                 negotiationStatuses={negotiationStatuses}
                                                 investorCounts={investorCounts}
                                                 onNavigateToNegotiation={onNavigateToNegotiation}
+                                                onOpenDetail={(idea) => { setSelectedIdea(idea); setDetailOpen(true); }}
                                             />
                                         </div>
                                     ))}

@@ -149,7 +149,10 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <span className="font-bold text-lg text-white">
-                            {offer.by === 'founder' ? `${founderName}'s Offer` : `${investorName}'s Offer`}
+                            {offer.by === 'founder' 
+                                ? `${founderName}${negotiation.founderUsername ? ` (@${negotiation.founderUsername})` : ''}'s Offer` 
+                                : `${investorName}${negotiation.investorUsername ? ` (@${negotiation.investorUsername})` : ''}'s Offer`
+                            }
                         </span>
                         {isFounderInitialOffer && (
                             <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
@@ -193,7 +196,9 @@ const NegotiationDeck: React.FC<NegotiationDeckProps> = ({
                         )}
                         <div>
                             <h1 className="text-xl sm:text-2xl font-bold text-white">Negotiation for {negotiation.ideaTitle}</h1>
-                            <p className="text-sm text-slate-400">Between {founderName} & {investorName} (Investor)</p>
+                            <p className="text-sm text-slate-400">
+                                Between {founderName} {negotiation.founderUsername && `(@${negotiation.founderUsername})`} & {investorName} {negotiation.investorUsername && `(@${negotiation.investorUsername})`} (Investor)
+                            </p>
                         </div>
                     </div>
                     {!isMobile && (

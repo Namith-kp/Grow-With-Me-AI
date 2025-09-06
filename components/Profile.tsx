@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Role, View, Idea } from '../types';
 import AvatarAdjustModal from './AvatarAdjustModal';
 import BannerAdjustModal from './BannerAdjustModal';
-import { UserIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, CalendarIcon, BriefcaseIcon, StarIcon, HeartIcon, TargetIcon, DollarSignIcon, TrendingUpIcon, MailIcon, PhoneIcon, GlobeIcon, LinkedinIcon, GithubIcon, TwitterIcon, CameraIcon, UsersIcon } from './icons';
+import { UserIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, CalendarIcon, BriefcaseIcon, StarIcon, HeartIcon, TargetIcon, DollarSignIcon, TrendingUpIcon, MailIcon, PhoneIcon, GlobeIcon, LinkedinIcon, GithubIcon, TwitterIcon, CameraIcon, UsersIcon, LightbulbIcon } from './icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 import { firestoreService } from '../services/firestoreService';
+import { getAllCountries, getStatesByCountry, getCitiesByState, Country, State } from '../data/locations-comprehensive';
+import SearchableDropdown from './SearchableDropdown';
 
 interface ProfileProps {
     userProfile: User | null;
@@ -51,13 +53,29 @@ const Profile: React.FC<ProfileProps> = ({
     const [showConnectionsModal, setShowConnectionsModal] = useState(false);
     const [otherUserConnections, setOtherUserConnections] = useState<User[]>([]);
     const [isBannerExpanded, setIsBannerExpanded] = useState(false);
+    const [usernameValidation, setUsernameValidation] = useState<{ isValid: boolean; error?: string } | null>(null);
+    const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+    
+    const [locationValidation, setLocationValidation] = useState<{ isValid: boolean; error?: string } | null>(null);
+    const [isCheckingLocation, setIsCheckingLocation] = useState(false);
+    
+    // Location dropdown states
+    const [selectedCountry, setSelectedCountry] = useState<string>('');
+    const [selectedState, setSelectedState] = useState<string>('');
+    const [selectedCity, setSelectedCity] = useState<string>('');
+    const [availableStates, setAvailableStates] = useState<State[]>([]);
+    const [availableCities, setAvailableCities] = useState<string[]>([]);
     const previousConnectionStatus = useRef<string | null>(null);
     const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasShownNotification = useRef<boolean>(false);
     const [formData, setFormData] = useState({
         name: '',
+        username: '',
         role: Role.Founder,
         location: '',
+        country: '',
+        state: '',
+        city: '',
         dateOfBirth: '',
         gender: '',
         phone: '',
@@ -78,12 +96,17 @@ const Profile: React.FC<ProfileProps> = ({
     const isViewingOther = !!(currentUser && userProfile && userProfile.id !== currentUser.id);
     const readOnly = isReadOnly || isViewingOther;
 
+
     useEffect(() => {
         if (userProfile) {
             setFormData({
                 name: userProfile.name || '',
+                username: userProfile.username || '',
                 role: userProfile.role || Role.Founder,
                 location: userProfile.location || '',
+                country: userProfile.country || '',
+                state: userProfile.state || '',
+                city: userProfile.city || '',
                 dateOfBirth: userProfile.dateOfBirth || '',
                 gender: userProfile.gender || '',
                 phone: (userProfile as any).phone || '',
@@ -98,6 +121,29 @@ const Profile: React.FC<ProfileProps> = ({
                 minEquity: userProfile.investorProfile?.expectedEquity?.min?.toString() || '',
                 maxEquity: userProfile.investorProfile?.expectedEquity?.max?.toString() || '',
             });
+
+            // Initialize location dropdown states
+            if (userProfile.country) {
+                setSelectedCountry(userProfile.country);
+                const states = getStatesByCountry(userProfile.country);
+                setAvailableStates(states);
+                
+                if (userProfile.state) {
+                    setSelectedState(userProfile.state);
+                    const cities = getCitiesByState(userProfile.country, userProfile.state);
+                    setAvailableCities(cities);
+                    
+                    if (userProfile.city) {
+                        setSelectedCity(userProfile.city);
+                    }
+                }
+            } else {
+                setSelectedCountry('');
+                setSelectedState('');
+                setSelectedCity('');
+                setAvailableStates([]);
+                setAvailableCities([]);
+            }
             // Ignore Gmail-linked avatars by default
             const safe = getSafeAvatarUrl(userProfile) || null;
             console.log('Setting avatar preview:', safe, 'from userProfile:', userProfile);
@@ -109,20 +155,27 @@ const Profile: React.FC<ProfileProps> = ({
     // Load user's ideas
     useEffect(() => {
         const loadIdeas = async () => {
-            if (!userProfile || !readOnly || !userProfile.id) return;
+            if (!userProfile || !userProfile.id) return;
             
             setIdeasLoading(true);
             try {
                 let userIdeas: Idea[] = [];
                 
                 if (userProfile.role === Role.Founder) {
-                    userIdeas = await firestoreService.getOwnIdeasByFounder(userProfile.id);
+                    if (readOnly && currentUser) {
+                        // Viewing someone else's profile - filter by visibility and connections
+                        userIdeas = await firestoreService.getIdeasByFounderForUser(userProfile.id, currentUser.id);
+                    } else {
+                        // Viewing own profile - show all ideas
+                        userIdeas = await firestoreService.getOwnIdeasByFounder(userProfile.id);
+                    }
                 } else if (userProfile.role === Role.Investor) {
                     userIdeas = await firestoreService.getIdeasInvestedByInvestor(userProfile.id);
                 } else if (userProfile.role === Role.Developer) {
                     userIdeas = await firestoreService.getIdeasCollaboratedByDeveloper(userProfile.id);
                 }
                 
+                console.log('Loaded ideas for profile:', userIdeas);
                 setIdeas(userIdeas || []);
             } catch (error) {
                 console.error('Error loading ideas:', error);
@@ -133,7 +186,7 @@ const Profile: React.FC<ProfileProps> = ({
         };
 
         loadIdeas();
-    }, [userProfile, readOnly]);
+    }, [userProfile, readOnly, currentUser]);
 
     // Clear notifications when component mounts or user changes
     useEffect(() => {
@@ -241,8 +294,27 @@ const Profile: React.FC<ProfileProps> = ({
     const handleSave = async () => {
         if (!userProfile) return;
 
+        // Validate username if it's being changed
+        if (formData.username !== userProfile.username) {
+            if (!formData.username.trim()) {
+                alert('Username is required');
+                return;
+            }
+            
+            if (usernameValidation && !usernameValidation.isValid) {
+                alert(usernameValidation.error || 'Username is not valid');
+                return;
+            }
+            
+            if (isCheckingUsername) {
+                alert('Please wait for username validation to complete');
+                return;
+            }
+        }
+
         const updatedProfile: Partial<User> = {
             name: formData.name,
+            username: formData.username.trim().toLowerCase(),
             role: formData.role,
             location: formData.location,
             dateOfBirth: formData.dateOfBirth,
@@ -277,13 +349,19 @@ const Profile: React.FC<ProfileProps> = ({
             // If avatarPreview exists, persist photoURL to Firestore so it reflects everywhere
             if (avatarPreview && userProfile?.id) {
                 try {
-                    await firestoreService.updateUserProfile(userProfile.id, { photoURL: avatarPreview } as any);
+                    await firestoreService.updateUserProfile(userProfile.id, { 
+                        photoURL: avatarPreview,
+                        customAvatar: true 
+                    } as any);
                 } catch (e) {
                     console.warn('Failed to persist photoURL, proceeding with rest of profile update', e);
                 }
             } else if (avatarRemoved && userProfile?.id) {
                 try {
-                    await firestoreService.updateUserProfile(userProfile.id, { photoURL: null } as any);
+                    await firestoreService.updateUserProfile(userProfile.id, { 
+                        photoURL: null,
+                        customAvatar: false 
+                    } as any);
                 } catch (e) {
                     console.warn('Failed to clear photoURL, proceeding with rest of profile update', e);
                 }
@@ -299,6 +377,7 @@ const Profile: React.FC<ProfileProps> = ({
             setIsEditing(false);
             setAvatarRemoved(false);
             setBannerRemoved(false);
+            setUsernameValidation(null);
         } catch (error) {
             console.error('Error updating profile:', error);
         }
@@ -308,8 +387,12 @@ const Profile: React.FC<ProfileProps> = ({
         if (userProfile) {
             setFormData({
                 name: userProfile.name || '',
+                username: userProfile.username || '',
                 role: userProfile.role || Role.Founder,
                 location: userProfile.location || '',
+                country: userProfile.country || '',
+                state: userProfile.state || '',
+                city: userProfile.city || '',
                 dateOfBirth: userProfile.dateOfBirth || '',
                 gender: userProfile.gender || '',
                 interests: (userProfile.interests || []).join(', '),
@@ -323,6 +406,29 @@ const Profile: React.FC<ProfileProps> = ({
                 minEquity: userProfile.investorProfile?.expectedEquity?.min?.toString() || '',
                 maxEquity: userProfile.investorProfile?.expectedEquity?.max?.toString() || '',
             });
+
+            // Reset location dropdown states
+            if (userProfile.country) {
+                setSelectedCountry(userProfile.country);
+                const states = getStatesByCountry(userProfile.country);
+                setAvailableStates(states);
+                
+                if (userProfile.state) {
+                    setSelectedState(userProfile.state);
+                    const cities = getCitiesByState(userProfile.country, userProfile.state);
+                    setAvailableCities(cities);
+                    
+                    if (userProfile.city) {
+                        setSelectedCity(userProfile.city);
+                    }
+                }
+            } else {
+                setSelectedCountry('');
+                setSelectedState('');
+                setSelectedCity('');
+                setAvailableStates([]);
+                setAvailableCities([]);
+            }
             
             // Clean up blob URL if it exists
             if (avatarPreview && avatarPreview.startsWith('blob:')) {
@@ -336,6 +442,158 @@ const Profile: React.FC<ProfileProps> = ({
         setIsEditing(false);
         setAvatarRemoved(false);
         setBannerRemoved(false);
+        setUsernameValidation(null);
+    };
+
+    // Debounced validation refs
+    const validateUsernameDebounced = useRef<NodeJS.Timeout | null>(null);
+    const validateLocationDebounced = useRef<NodeJS.Timeout | null>(null);
+    
+    const handleUsernameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newUsername = e.target.value;
+        setFormData(prev => ({ ...prev, username: newUsername }));
+        
+        // Clear previous timeout
+        if (validateUsernameDebounced.current) {
+            clearTimeout(validateUsernameDebounced.current);
+        }
+        
+        // If username is empty, clear validation
+        if (!newUsername.trim()) {
+            setUsernameValidation(null);
+            return;
+        }
+        
+        // Set loading state
+        setIsCheckingUsername(true);
+        
+        // Debounce validation
+        validateUsernameDebounced.current = setTimeout(async () => {
+            try {
+                // First validate format
+                const formatValidation = firestoreService.validateUsername(newUsername);
+                if (!formatValidation.isValid) {
+                    setUsernameValidation(formatValidation);
+                    setIsCheckingUsername(false);
+                    return;
+                }
+                
+                // Check availability
+                const availability = await firestoreService.checkUsernameAvailability(newUsername, userProfile?.id);
+                setUsernameValidation(availability);
+            } catch (error) {
+                console.error('Error validating username:', error);
+                setUsernameValidation({ isValid: false, error: 'Error checking username availability' });
+            } finally {
+                setIsCheckingUsername(false);
+            }
+        }, 500);
+    };
+
+    const validateLocation = async (location: string) => {
+        // Clear previous timeout
+        if (validateLocationDebounced.current) {
+            clearTimeout(validateLocationDebounced.current);
+        }
+        
+        // If location is empty, clear validation
+        if (!location.trim()) {
+            setLocationValidation(null);
+            return;
+        }
+        
+        // Set loading state
+        setIsCheckingLocation(true);
+        
+        // Debounce validation
+        validateLocationDebounced.current = setTimeout(async () => {
+            try {
+                // Validate location format
+                const validation = firestoreService.validateLocation(location);
+                setLocationValidation(validation);
+            } catch (error) {
+                console.error('Error validating location:', error);
+                setLocationValidation({ isValid: false, error: 'Error validating location' });
+            } finally {
+                setIsCheckingLocation(false);
+            }
+        }, 300);
+    };
+
+    const handleLocationChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newLocation = e.target.value;
+        setFormData(prev => ({ ...prev, location: newLocation }));
+        
+        // Clear validation state when user starts typing
+        if (newLocation !== formData.location) {
+            setLocationValidation(null);
+        }
+        
+        // Trigger validation after a short delay to allow state update
+        setTimeout(() => {
+            validateLocation(newLocation);
+        }, 100);
+    };
+
+    // Location dropdown handlers
+    const handleCountryChange = (countryCode: string) => {
+        setSelectedCountry(countryCode);
+        setSelectedState('');
+        setSelectedCity('');
+        
+        // Update form data
+        setFormData(prev => ({ 
+            ...prev, 
+            country: countryCode,
+            state: '',
+            city: '',
+            location: countryCode ? firestoreService.formatLocationString(countryCode, '', '') : ''
+        }));
+        
+        // Update available states
+        const states = getStatesByCountry(countryCode);
+        setAvailableStates(states);
+        setAvailableCities([]);
+        
+        // Clear location validation
+        setLocationValidation(null);
+    };
+
+    const handleStateChange = (stateCode: string) => {
+        setSelectedState(stateCode);
+        setSelectedCity('');
+        
+        // Update form data
+        setFormData(prev => ({ 
+            ...prev, 
+            state: stateCode,
+            city: '',
+            location: selectedCountry ? firestoreService.formatLocationString(selectedCountry, stateCode, '') : ''
+        }));
+        
+        // Update available cities
+        const cities = getCitiesByState(selectedCountry, stateCode);
+        setAvailableCities(cities);
+        
+        // Clear location validation
+        setLocationValidation(null);
+    };
+
+    const handleCityChange = (city: string) => {
+        setSelectedCity(city);
+        
+        // Update form data
+        setFormData(prev => ({ 
+            ...prev, 
+            city: city,
+            location: selectedCountry ? firestoreService.formatLocationString(selectedCountry, selectedState, city) : ''
+        }));
+        
+        // Validate the complete location
+        setTimeout(() => {
+            const validation = firestoreService.validateLocationFields(selectedCountry, selectedState, city);
+            setLocationValidation(validation);
+        }, 100);
     };
 
     // Function to resize image to 1:1 ratio using FileReader (base64)
@@ -588,16 +846,16 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Profile Content */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6 mt-2 sm:mt-4">
                 {/* Back Arrow - Above banner */}
-                <motion.button
-                    onClick={onBack}
+                            <motion.button
+                                onClick={onBack}
                     className="absolute top-2 left-2 z-10 text-slate-300 hover:text-white transition-colors p-1.5 sm:p-2 rounded-lg hover:bg-black/50 backdrop-blur-sm"
                     whileHover={{ scale: 1.05, x: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                >
+                                whileTap={{ scale: 0.95 }}
+                            >
                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                </motion.button>
+                            </motion.button>
 
                 {/* Edit Button - Above banner */}
                 {!readOnly && (
@@ -613,23 +871,23 @@ const Profile: React.FC<ProfileProps> = ({
                             </motion.button>
                         ) : (
                             <div className="flex items-center space-x-2">
-                                <motion.button
-                                    onClick={handleCancel}
+                                        <motion.button
+                                            onClick={handleCancel}
                                     className="p-2 sm:p-3 bg-gradient-to-r from-slate-700/50 to-slate-600/50 hover:from-slate-600/50 hover:to-slate-500/50 text-white rounded-full transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 shadow-lg hover:shadow-xl backdrop-blur-sm"
                                     whileHover={{ scale: 1.1, y: -2 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     <XIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </motion.button>
-                                <motion.button
-                                    onClick={handleSave}
-                                    disabled={loading}
+                                        </motion.button>
+                                        <motion.button
+                                            onClick={handleSave}
+                                            disabled={loading}
                                     className="p-2 sm:p-3 bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 hover:from-emerald-500/80 hover:to-emerald-400/80 text-white rounded-full transition-all duration-300 border border-emerald-600/50 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl backdrop-blur-sm"
                                     whileHover={{ scale: loading ? 1 : 1.1, y: loading ? 0 : -2 }}
                                     whileTap={{ scale: loading ? 1 : 0.95 }}
                                 >
                                     <SaveIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </motion.button>
+                                        </motion.button>
                             </div>
                         )}
                     </div>
@@ -655,9 +913,31 @@ const Profile: React.FC<ProfileProps> = ({
                                 <img src={bannerPreview} alt="banner" className="w-full h-full object-cover" />
                             ) : (
                                 <>
-                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900/50 to-black/50" />
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(34,197,94,0.1),transparent_50%)]"></div>
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.1),transparent_50%)]"></div>
+                                    {/* Default Banner Background */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(34,197,94,0.15),transparent_60%)]" />
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.15),transparent_60%)]" />
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.1),transparent_70%)]" />
+                                    
+                                    {/* Default Banner Pattern */}
+                                    <div className="absolute inset-0 opacity-20">
+                                        <div className="absolute top-8 left-8 w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-transparent blur-xl" />
+                                        <div className="absolute bottom-8 right-8 w-40 h-40 rounded-full bg-gradient-to-br from-blue-500/20 to-transparent blur-xl" />
+                                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-gradient-to-br from-purple-500/20 to-transparent blur-lg" />
+                                    </div>
+                                    
+                                    {/* Default Banner Text */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                                <span className="text-2xl font-bold text-slate-300">
+                                                    {getUserInitials(userProfile.name)}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-xl font-semibold text-slate-200 mb-1">{userProfile.name}</h3>
+                                            <p className="text-sm text-slate-400">{userProfile.role}</p>
+                                        </div>
+                                    </div>
                                 </>
                             )}
                             
@@ -738,73 +1018,104 @@ const Profile: React.FC<ProfileProps> = ({
                                 )}
 
                                 {/* Profile Info - Left aligned beside avatar */}
-                                <div className="flex-1 text-left space-y-2">
-                                    <motion.h2 
-                                        className="text-xl sm:text-2xl lg:text-3xl font-bold text-white"
+                                <div className="flex-1 text-left space-y-3">
+                                    {/* Row 1: Full Name and Role Tag */}
+                                    <motion.div 
+                                        className="flex flex-row items-center space-x-4"
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.2 }}
                                     >
+                                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
                                         {userProfile.name}
-                                    </motion.h2>
+                                        </h2>
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-gradient-to-r from-blue-700/30 to-blue-600/30 text-blue-200 border border-blue-600/40">
+                                            <BriefcaseIcon className="w-3 h-3 mr-1" />
+                                            {userProfile.role}
+                                        </span>
+                                    </motion.div>
                                     
-                                    {/* Role and Location - Left aligned */}
+                                    {/* Row 2: Username, Connections, and Ideas Count */}
                                     <motion.div 
-                                        className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-slate-300"
+                                        className="flex flex-row items-center space-x-6 text-slate-300"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.25 }}
+                                    >
+                                        {/* Username */}
+                                        {userProfile.username && (
+                                            <div className="flex items-center space-x-1.5">
+                                                <span className="text-sm sm:text-base text-slate-400">@{userProfile.username}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Connections Count */}
+                                        <div className="flex items-center space-x-1.5">
+                                            <UsersIcon className="w-4 h-4 text-orange-400" />
+                                            <span className="text-sm sm:text-base">
+                                                {userProfile.connections?.length > 1000 
+                                                    ? `${Math.floor(userProfile.connections.length / 1000)}k connections`
+                                                    : `${userProfile.connections?.length || 0} connections`
+                                                }
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Ideas Count based on role */}
+                                        <div className="flex items-center space-x-1.5">
+                                            <LightbulbIcon className="w-4 h-4 text-yellow-400" />
+                                            <span className="text-sm sm:text-base">
+                                                {userProfile.role === 'Investor' 
+                                                    ? `Invested in ${ideas.filter(idea => idea.investors?.includes(userProfile.id)).length} startups`
+                                                    : userProfile.role === 'Founder'
+                                                    ? `${ideas.filter(idea => idea.founderId === userProfile.id).length} ideas posted`
+                                                    : `Joined ${ideas.filter(idea => idea.developers?.includes(userProfile.id)).length} startups`
+                                                }
+                                            </span>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* Row 3: Location */}
+                                    <motion.div 
+                                        className="flex items-center space-x-1.5 text-slate-300"
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.3 }}
                                     >
-                                        <div className="flex items-center space-x-1.5">
-                                            <BriefcaseIcon className="w-4 h-4" />
-                                            <span className="text-sm sm:text-base">{userProfile.role}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1.5">
-                                            <MapPinIcon className="w-4 h-4" />
-                                            <span className="text-sm sm:text-base">{userProfile.location}</span>
-                                        </div>
+                                        <MapPinIcon className="w-4 h-4" />
+                                        <span className="text-sm sm:text-base">{firestoreService.formatExistingLocationString(userProfile.location)}</span>
                                     </motion.div>
 
-                                    {/* Contact info: only show to connected users */}
-                                    {readOnly && currentUser && userProfile.id !== currentUser.id && (
-                                        <>
-                                            {/* Show only when connected. Fallback to direct connections array in case status listener lags */}
-                                            {(connectionStatus === 'connected' || (userProfile.connections || []).includes(currentUser.id)) && (
-                                                <motion.div 
-                                                    className="flex flex-col items-start gap-1 mt-2 text-slate-300"
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: 0.4 }}
-                                                >
-                                                    {(userProfile as any).email && (
-                                                        <div className="flex items-center gap-2">
-                                                            <MailIcon className="w-4 h-4" />
-                                                            <span className="text-sm sm:text-base break-all">{(userProfile as any).email}</span>
-                                                        </div>
-                                                    )}
-                                                    {(userProfile as any).phone && (
-                                                        <div className="flex items-center gap-2">
-                                                            <PhoneIcon className="w-4 h-4" />
-                                                            <span className="text-sm sm:text-base">{(userProfile as any).phone}</span>
-                                                        </div>
-                                                    )}
-                                                </motion.div>
-                                            )}
-                                        </>
-                                    )}
+                                    {/* Row 4: Email and Phone */}
+                                    <motion.div 
+                                        className="flex flex-row items-center space-x-6 text-slate-300"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.4 }}
+                                    >
+                                        {/* Email - only show to connected users or own profile */}
+                                        {(userProfile as any).email && (!readOnly || (currentUser && currentUser.connections?.includes(userProfile.id))) && (
+                                            <div className="flex items-center space-x-1.5">
+                                                <MailIcon className="w-4 h-4 text-green-400" />
+                                                <span className="text-sm sm:text-base break-all">{(userProfile as any).email}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Phone - only show to connected users or own profile */}
+                                        {(userProfile as any).phone && (!readOnly || (currentUser && currentUser.connections?.includes(userProfile.id))) && (
+                                            <div className="flex items-center space-x-1.5">
+                                                <PhoneIcon className="w-4 h-4 text-blue-400" />
+                                                <span className="text-sm sm:text-base">{(userProfile as any).phone}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Show message for non-connected users */}
+                                        {readOnly && currentUser && !currentUser.connections?.includes(userProfile.id) && (
+                                            <div className="flex items-center space-x-1.5 text-slate-500">
+                                                <span className="text-sm sm:text-base italic">Contact details visible to connections only</span>
+                                            </div>
+                                        )}
+                                    </motion.div>
 
-                                    {/* Signed-in user's own email on banner */}
-                                    {!readOnly && (
-                                        <motion.div 
-                                            className="flex items-center gap-3 mt-2 text-slate-300"
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.35 }}
-                                        >
-                                            <MailIcon className="w-4 h-4" />
-                                            <span className="text-sm sm:text-base break-all">{(userProfile as any).email}</span>
-                                        </motion.div>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -844,7 +1155,7 @@ const Profile: React.FC<ProfileProps> = ({
                                         <>
                                             <div className="w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center">
                                                 <div className="w-2 h-2 bg-white rounded-full"></div>
-                                            </div>
+                    </div>
                                             <span>Connected</span>
                                         </>
                                     ) : connectionStatus === 'requested' ? (
@@ -871,156 +1182,21 @@ const Profile: React.FC<ProfileProps> = ({
                                     <MailIcon className="w-5 h-5" />
                                     <span>Message</span>
                                 </motion.button>
-                            </motion.div>
+                </motion.div>
                         )}
 
-                        {/* Stats Section - Mobile */}
-                        <div className="mt-6 sm:mt-8 mb-6 sm:mb-8">
-                            <motion.div 
-                                className={`grid gap-1 sm:gap-3 ${userProfile.role === Role.Investor ? 'grid-cols-2' : 'grid-cols-4'}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.7 }}
-                            >
-                                <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                    whileHover={{ scale: 1.02, y: -2 }}
-                                >
-                                    <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
-                                        <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400" />
-                                    </div>
-                                    <h4 className="text-xs font-semibold text-white mb-1 leading-tight">
-                                        {userProfile.role === Role.Founder && 'Ideas Posted'}
-                                        {userProfile.role === Role.Investor && 'Ideas Invested In'}
-                                        {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
-                                    </h4>
-                                    <p className="text-lg sm:text-2xl font-bold text-emerald-400">{ideas.length}</p>
-                                </motion.div>
-                                
-                                {userProfile.role !== Role.Investor && (
-                                    <>
-                                        <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                            whileHover={{ scale: 1.02, y: -2 }}
-                                        >
-                                            <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
-                                                <BriefcaseIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
-                                            </div>
-                                            <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Skills & Expertise</h4>
-                                            <p className="text-lg sm:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
-                                        </motion.div>
-                                        
-                                        <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                            whileHover={{ scale: 1.02, y: -2 }}
-                                        >
-                                            <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
-                                                <HeartIcon className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
-                                            </div>
-                                            <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Areas of Interest</h4>
-                                            <p className="text-lg sm:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
-                                        </motion.div>
-                                    </>
-                                )}
-                                
-                                {/* Connections Count Card */}
-                                <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer aspect-square flex flex-col justify-center"
-                                    whileHover={{ scale: 1.02, y: -2 }}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleConnectionsClick();
-                                    }}
-                                >
-                                    <div className="w-5 h-5 sm:w-8 sm:h-8 mx-auto bg-gradient-to-br from-orange-600/20 to-orange-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2">
-                                        <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 text-orange-400" />
-                                    </div>
-                                    <h4 className="text-xs font-semibold text-white mb-1 leading-tight">Connections</h4>
-                                    <p className="text-lg sm:text-2xl font-bold text-orange-400">{userProfile.connections.length}</p>
-                                </motion.div>
-                            </motion.div>
-                        </div>
                     </div>
 
 
                     {/* Large Screen Layout */}
                     <div className="hidden lg:grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
-                        {/* Left Column - Stats */}
-                        <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-6 lg:mb-8">
-                            {/* Interactive Stats Section - span two columns on large screens */}
-                            <motion.div 
-                                className={`grid gap-1 sm:gap-3 lg:gap-4 lg:col-span-2 ${userProfile.role === Role.Investor ? 'grid-cols-2' : 'grid-cols-4'}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.7 }}
-                            >
-                                <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                    whileHover={{ scale: 1.02, y: -2 }}
-                                >
-                                    <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                        <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-emerald-400" />
-                                    </div>
-                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">
-                                        {userProfile.role === Role.Founder && 'Ideas Posted'}
-                                        {userProfile.role === Role.Investor && 'Ideas Invested In'}
-                                        {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
-                                    </h4>
-                                    <p className="text-lg sm:text-2xl font-bold text-emerald-400">{ideas.length}</p>
-                                </motion.div>
-                                
-                                {userProfile.role !== Role.Investor && (
-                                    <>
-                                        <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                            whileHover={{ scale: 1.02, y: -2 }}
-                                        >
-                                            <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                                <BriefcaseIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-400" />
-                                            </div>
-                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Skills & Expertise</h4>
-                                            <p className="text-lg sm:text-2xl font-bold text-blue-400">{userProfile.skills.length}</p>
-                                        </motion.div>
-                                        
-                                        <motion.div 
-                                            className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 aspect-square flex flex-col justify-center"
-                                            whileHover={{ scale: 1.02, y: -2 }}
-                                        >
-                                            <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-purple-600/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                                <HeartIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-purple-400" />
-                                            </div>
-                                            <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Areas of Interest</h4>
-                                            <p className="text-lg sm:text-2xl font-bold text-purple-400">{userProfile.interests.length}</p>
-                                        </motion.div>
-                                    </>
-                                )}
-                                
-                                {/* Connections Count Card */}
-                                <motion.div 
-                                    className="bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-xl border border-slate-800/50 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 lg:p-4 text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 cursor-pointer aspect-square flex flex-col justify-center"
-                                    whileHover={{ scale: 1.02, y: -2 }}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleConnectionsClick();
-                                    }}
-                                >
-                                    <div className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10 mx-auto bg-gradient-to-br from-orange-600/20 to-orange-500/20 rounded-lg flex items-center justify-center mb-1 sm:mb-2 lg:mb-3">
-                                        <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-orange-400" />
-                                    </div>
-                                    <h4 className="text-xs sm:text-sm font-semibold text-white mb-1 leading-tight">Connections</h4>
-                                    <p className="text-lg sm:text-2xl font-bold text-orange-400">{userProfile.connections.length}</p>
-                                </motion.div>
-                            </motion.div>
-                        </div>
 
                         {/* Right Column - Connect & Message Buttons */}
                         <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                             {/* Connect & Message Buttons */}
                             {readOnly && currentUser && userProfile.id !== currentUser.id && (
                                 <motion.div 
-                                    className="flex flex-col gap-2 sm:gap-3 lg:gap-4"
+                                    className="flex flex-row gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6"
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.5 }}
@@ -1095,7 +1271,7 @@ const Profile: React.FC<ProfileProps> = ({
                                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-4 flex items-center">
                                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 mr-3 sm:mr-4">
                                             <StarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                        </div>
+                                </div>
                                         {userProfile.role === Role.Founder && 'Ideas Posted'}
                                         {userProfile.role === Role.Investor && 'Ideas Invested In'}
                                         {userProfile.role === Role.Developer && 'Ideas Collaborated On'}
@@ -1105,7 +1281,7 @@ const Profile: React.FC<ProfileProps> = ({
                                 <div className="flex items-center justify-center py-8">
                                                 <div className="w-8 h-8 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin"></div>
                                                 <span className="ml-3 text-slate-400">Loading ideas...</span>
-                                </div>
+                            </div>
                                         ) : ideas.length > 0 ? (
                                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-1.5 sm:gap-3 lg:gap-4">
                                                 {ideas.map((idea, index) => (
@@ -1118,15 +1294,47 @@ const Profile: React.FC<ProfileProps> = ({
                                                         whileHover={{ scale: 1.02, y: -2 }}
                                                         onClick={() => onNavigateToIdea?.(idea.id)}
                                                     >
-                                                        <div className="flex items-start justify-between mb-1 sm:mb-2">
-                                                            <h4 className="text-white font-semibold text-xs sm:text-sm lg:text-base line-clamp-2 flex-1 pr-1">
+                                                        {/* Row 1: Idea Title and Visibility */}
+                                                        <div className="flex items-start justify-between mb-2 sm:mb-3">
+                                                            <h4 className="text-white font-semibold text-xs sm:text-sm lg:text-base line-clamp-2 flex-1 pr-2">
                                                                 {idea.title || 'Untitled Idea'}
                                                             </h4>
-                                                            <div className="flex items-center space-x-0.5 sm:space-x-1 text-slate-400 text-xs flex-shrink-0">
-                                                                <StarIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                                                <span>{(idea.likes || []).length || 0}</span>
-                                                </div>
-                                            </div>
+                                                            <div className="flex items-center space-x-1 flex-shrink-0">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    idea.visibility === 'public' 
+                                                                        ? 'bg-green-700/30 text-green-300 border border-green-600/30' 
+                                                                        : 'bg-orange-700/30 text-orange-300 border border-orange-600/30'
+                                                                }`}>
+                                                                    {idea.visibility || 'Unknown'}
+                                                                </span>
+                                                                <div className="flex items-center space-x-0.5 text-slate-400 text-xs">
+                                                                    <StarIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                                                    <span>{(idea.likes || []).length || 0}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Row 2: Avatar, Full Name, Username, and User Type */}
+                                                        <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center flex-shrink-0">
+                                                                <span className="text-xs font-medium text-slate-300">
+                                                                    {idea.founderName ? idea.founderName.charAt(0).toUpperCase() : (userProfile.name ? userProfile.name.charAt(0).toUpperCase() : '?')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <span className="text-xs sm:text-sm font-medium text-slate-200 truncate">
+                                                                        {idea.founderName || userProfile.name || 'Unknown User'}
+                                                                    </span>
+                                                                    <span className="text-xs text-slate-400 truncate">
+                                                                        @{userProfile.username || 'unknown'}
+                                                                    </span>
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-700/30 to-blue-600/30 text-blue-200 border border-blue-600/40 flex-shrink-0">
+                                                                        {userProfile.role}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 mb-1 sm:mb-2">
                                                             {idea.description || 'No description available'}
                                                         </p>
@@ -1188,7 +1396,9 @@ const Profile: React.FC<ProfileProps> = ({
                                 </div>
                                         Basic Information
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+                                    <div className="space-y-6">
+                                        {/* Row 1: Full Name and Username */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Full Name</label>
                                         {isEditing ? (
@@ -1208,6 +1418,49 @@ const Profile: React.FC<ProfileProps> = ({
                                             </div>
                                         )}
                                     </div>
+                                        <div>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Username</label>
+                                        {isEditing ? (
+                                    <div className="space-y-2">
+                                                <input
+                                                    type="text"
+                                                    name="username"
+                                                    value={formData.username}
+                                                    onChange={handleUsernameChange}
+                                                    className={`w-full bg-slate-800/50 border rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg ${
+                                                        !formData.username.trim() ? 'border-slate-700/50 focus:ring-slate-500/50 focus:border-slate-500/50' :
+                                                        isCheckingUsername ? 'border-yellow-500/50 focus:ring-yellow-500/50 focus:border-yellow-500/50' :
+                                                        usernameValidation === null ? 'border-slate-700/50 focus:ring-slate-500/50 focus:border-slate-500/50' :
+                                                        usernameValidation.isValid ? 'border-green-500/50 focus:ring-green-500/50 focus:border-green-500/50' : 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
+                                                    }`}
+                                                    placeholder="Enter username"
+                                                />
+                                                {isCheckingUsername && (
+                                                    <div className="flex items-center space-x-2 text-slate-400 text-sm">
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400"></div>
+                                                        <span>Checking availability...</span>
+                                                    </div>
+                                                )}
+                                                {usernameValidation && !isCheckingUsername && (
+                                                    <div className={`text-sm ${
+                                                        usernameValidation.isValid ? 'text-green-400' : 'text-red-400'
+                                                    }`}>
+                                                        {usernameValidation.isValid ? '✓ Username is available' : usernameValidation.error}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm sm:text-base bg-gradient-to-r from-blue-700/30 to-blue-600/30 text-blue-200 border border-blue-600/40">
+                                                    @{userProfile.username || 'No username set'}
+                                                </span>
+                                            </div>
+                                        )}
+                                        </div>
+                                        </div>
+                                        
+                                        {/* Row 2: Role and Date of Birth */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Role</label>
                                         {isEditing ? (
@@ -1229,41 +1482,124 @@ const Profile: React.FC<ProfileProps> = ({
                                                     </span>
                                             </div>
                                         )}
-                                    </div>
+                                </div>
+                                
+                                        {/* Date of Birth field */}
                                         <div>
-                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Location</label>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Date of Birth</label>
                                         {isEditing ? (
                                             <input
-                                                type="text"
-                                                name="location"
-                                                value={formData.location}
+                                                type="date"
+                                                name="dateOfBirth"
+                                                value={formData.dateOfBirth}
                                                 onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
+                                                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
                                             />
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm sm:text-base bg-gradient-to-r from-purple-700/30 to-purple-600/30 text-purple-200 border border-purple-600/40">
+                                                    <CalendarIcon className="w-4 h-4" />
+                                                    {userProfile.dateOfBirth || 'Not specified'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                        </div>
+                                        
+                                        {/* Row 3: Location (Country, State, City) */}
+                                        <div>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Location</label>
+                                            {isEditing ? (
+                                            <div className="space-y-4">
+                                                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+                                                    {/* Country Dropdown */}
+                                                    <div className="space-y-1 flex-1">
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Country *</label>
+                                                        <SearchableDropdown
+                                                            options={getAllCountries().map(country => ({
+                                                                value: country.code,
+                                                                label: country.name
+                                                            }))}
+                                                            value={selectedCountry}
+                                                            onChange={handleCountryChange}
+                                                            placeholder="Select Country"
+                                                            searchPlaceholder="Search countries..."
+                                                            emptyMessage="No countries found"
+                                                            required
+                                                            allowClear
+                                                        />
+                                                    </div>
+
+                                                    {/* State Dropdown */}
+                                                    <div className="space-y-1 flex-1">
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">State/Province *</label>
+                                                        <SearchableDropdown
+                                                            options={availableStates.map(state => ({
+                                                                value: state.code,
+                                                                label: state.name
+                                                            }))}
+                                                            value={selectedState}
+                                                            onChange={handleStateChange}
+                                                            placeholder="Select State/Province"
+                                                            searchPlaceholder="Search states..."
+                                                            emptyMessage="No states found"
+                                                            disabled={availableStates.length === 0}
+                                                            required
+                                                            allowClear
+                                                        />
+                                                    </div>
+
+                                                    {/* City Dropdown */}
+                                                    <div className="space-y-1 flex-1">
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">City</label>
+                                                        <SearchableDropdown
+                                                            options={availableCities.map(city => ({
+                                                                value: city,
+                                                                label: city
+                                                            }))}
+                                                            value={selectedCity}
+                                                            onChange={handleCityChange}
+                                                            placeholder="Select City (Optional)"
+                                                            searchPlaceholder="Search cities..."
+                                                            emptyMessage="No cities found"
+                                                            disabled={availableCities.length === 0}
+                                                            allowClear
+                                                            className="border-slate-700/50 focus:ring-slate-500/50 focus:border-slate-500/50"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Location Summary */}
+                                                {formData.location && (
+                                                    <div className="p-2 bg-slate-800/30 rounded-lg">
+                                                        <p className="text-xs text-slate-400">Selected Location:</p>
+                                                        <p className="text-sm text-white font-medium">{formData.location}</p>
+                                                </div>
+                                            )}
+
+                                                {/* Validation Messages */}
+                                                {locationValidation && (
+                                                    <div className={`text-xs ${
+                                                        locationValidation.isValid ? 'text-green-400' : 'text-red-400'
+                                                    }`}>
+                                                        {locationValidation.isValid ? '✓ Location selected' : locationValidation.error}
+                                                    </div>
+                                                )}
+                                            </div>
                                         ) : (
                                                 <div className="flex flex-wrap gap-2">
                                                     <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm sm:text-base bg-gradient-to-r from-slate-700/30 to-slate-600/30 text-slate-200 border border-slate-600/40">
                                                         <MapPinIcon className="w-4 h-4" />
-                                                        {userProfile.location || 'Not specified'}
+                                                        {firestoreService.formatExistingLocationString(userProfile.location) || 'Not specified'}
                                                     </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                        {isEditing && (
-                                            <div>
-                                                <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Date of Birth</label>
-                                                <input
-                                                    type="date"
-                                                    name="dateOfBirth"
-                                                    value={formData.dateOfBirth}
-                                                    onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 text-sm sm:text-base shadow-lg"
-                                                />
-                                                </div>
-                                            )}
-                                        {isEditing && (
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Gender</label>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                        {/* Row 4: Gender and Phone */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Gender</label>
                                             <select
                                                 name="gender"
                                                 value={formData.gender}
@@ -1276,10 +1612,10 @@ const Profile: React.FC<ProfileProps> = ({
                                                 <option value="Other">Other</option>
                                             </select>
                                             </div>
-                                        )}
-                                        {isEditing && (
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Phone (shown to connections)</label>
+                                        
+                                        {/* Phone field */}
+                                        <div>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-2 sm:mb-3">Phone (shown to connections)</label>
                                                 <input
                                                     type="tel"
                                                     name="phone"
@@ -1289,7 +1625,7 @@ const Profile: React.FC<ProfileProps> = ({
                                                     placeholder="e.g., +1 555 123 4567"
                                                 />
                                     </div>
-                                )}
+                                        </div>
                             </div>
                         </motion.div>
                                 )}
@@ -1558,8 +1894,8 @@ const Profile: React.FC<ProfileProps> = ({
                     )}
 
                 {/* Floating Action Button removed for cleaner layout */}
-                </div>
-            </div>
+                                </div>
+                            </div>
 
             {/* Other User's Connections Modal */}
             {showConnectionsModal && (
@@ -1574,14 +1910,14 @@ const Profile: React.FC<ProfileProps> = ({
                                 <p className="text-slate-400 text-sm mt-1">
                                     {otherUserConnections.length} connection{otherUserConnections.length !== 1 ? 's' : ''}
                                 </p>
-                            </div>
+                                </div>
                             <button
                                 onClick={() => setShowConnectionsModal(false)}
                                 className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800/50"
                             >
                                 <XIcon className="w-5 h-5" />
                             </button>
-                        </div>
+                                </div>
                         
                         <div className="overflow-y-auto max-h-[60vh]">
                             {otherUserConnections.length > 0 ? (
@@ -1593,20 +1929,20 @@ const Profile: React.FC<ProfileProps> = ({
                                         >
                                             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-lg font-bold">
                                                 {getUserInitials(connection.name)}
-                                            </div>
+                                                </div>
                                             <h4 className="text-white font-medium text-sm mb-1 truncate">{connection.name}</h4>
                                             <p className="text-slate-400 text-xs truncate">{connection.role}</p>
-                                        </div>
-                                    ))}
-                                </div>
+                                            </div>
+                                                ))}
+                                            </div>
                             ) : (
                                 <div className="text-center py-8">
                                     <UsersIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
                                     <p className="text-slate-400">No connections yet</p>
                                 </div>
                             )}
-                        </div>
                     </div>
+                </div>
                 </div>
             )}
             </div>

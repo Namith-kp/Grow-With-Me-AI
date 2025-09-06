@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Idea, User } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { XIcon, TrashIcon } from './icons';
+import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 
 interface TeamManagementModalProps {
     idea: Idea;
@@ -55,7 +56,13 @@ const TeamManagementModal: React.FC<TeamManagementModalProps> = ({ idea, onClose
                             {teamMembers.map(member => (
                                 <li key={member.id} className="flex items-center justify-between bg-neutral-800/50 p-3 rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <img src={member.avatarUrl} alt={member.name} className="w-10 h-10 rounded-full" />
+                                        {getSafeAvatarUrl(member) ? (
+                                            <img src={getSafeAvatarUrl(member)} alt={member.name} className="w-10 h-10 rounded-full" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-bold">
+                                                {getUserInitials(member.name)}
+                                            </div>
+                                        )}
                                         <div>
                                             <p className="font-semibold text-white">{member.name}</p>
                                             <p className="text-sm text-neutral-400">{member.role}</p>
