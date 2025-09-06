@@ -17,6 +17,9 @@ export default {
 			}
 		},
 			extend: {
+				fontFamily: {
+					'montserrat': ['Montserrat', 'sans-serif'],
+				},
 				screens: {
 					custom1366: { 'raw': '(min-width: 1360px) and (max-width: 1370px)' },
 				},

@@ -22,7 +22,7 @@ const LandingPageSquares: React.FC = () => {
   <header className="relative w-full h-3 flex items-center justify-between px-4 sm:px-6 md:px-12 z-20 pointer-events-auto">
           <div className="flex items-center gap-3 pointer-events-auto">
             <LogoIcon className="w-8 h-8 text-indigo-500" />
-            <span className="text-lg md:text-xl font-semibold text-white tracking-tight">Grow With Me</span>
+            <span className="font-montserrat text-lg md:text-xl font-semibold text-white tracking-tight">row With Me</span>
           </div>
           <button className="bg-white text-[#18141c] rounded-2xl px-6 py-2 font-medium text-base shadow hover:bg-gray-200 transition pointer-events-auto" onClick={handleGetStarted}>Get Started</button>
         </header>

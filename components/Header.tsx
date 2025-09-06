@@ -117,9 +117,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
             <header className="fixed top-0 left-0 right-0 bg-white/5 backdrop-blur-sm z-50 border-b border-white/10 shadow-lg">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setView(View.LANDING)}>
-                            <LogoIcon className="h-8 w-8 text-purple-500" />
-                            <span className="font-bold text-xl text-white">Grow With Me</span>
+                        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => setView(View.LANDING)}>
+                            <div className="flex items-center justify-center gap-1">
+                                <LogoIcon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                                <span className="font-montserrat font-semibold text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
+                            </div>
                         </div>
                         <button onClick={() => setView(View.AUTH)} className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300">
                             <LogInIcon className="w-5 h-5" />
@@ -166,9 +168,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none mr-2 sm:block hidden lg:hidden" title="Open menu">
                             <HamburgerIcon className="w-7 h-7 text-white" />
                         </button>
-                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setView(View.LANDING)}>
-                            <LogoIcon className="h-8 w-8 text-purple-500" />
-                            <span className="font-bold text-xl text-white">Grow With Me</span>
+                        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => setView(View.LANDING)}>
+                            <div className="flex items-center justify-center gap-1">
+                                <LogoIcon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                                <span className="font-montserrat font-semibold text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
+
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center">
@@ -293,9 +298,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
                         </div>
                         <div className="flex items-center justify-between mb-10 px-2">
-                            <div className="flex items-center space-x-2 cursor-pointer" onClick={() => { setView(View.LANDING); setSidebarOpen(false); }}>
-                                <LogoIcon className="h-8 w-8 text-purple-500" />
-                                <span className="font-bold text-xl text-white">Grow With Me</span>
+                            <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => { setView(View.LANDING); setSidebarOpen(false); }}>
+                                <div className="flex items-center justify-center gap-1">
+                                    <LogoIcon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
+                                    <span className="font-montserrat font-semibold text-xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
+
+                                </div>
                             </div>
                             <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-neutral-800 focus:outline-none" title="Close menu">
                                 <XIcon className="w-6 h-6 text-white" />
@@ -368,9 +376,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                     <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl animate-pulse-slow" />
                     <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
                 </div>
-                <div className="flex items-center space-x-2 cursor-pointer mb-10 px-2" onClick={() => setView(View.LANDING)}>
-                    <LogoIcon className="h-8 w-8 text-purple-500" />
-                    <span className="font-bold text-xl text-white">Grow With Me</span>
+                <div className="flex items-center space-x-3 cursor-pointer group mb-10 px-2" onClick={() => setView(View.LANDING)}>
+                    <div className="flex items-center justify-center gap-1">
+                        <LogoIcon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                        <span className="font-montserrat font-semibold text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
+                    </div>
                 </div>
                 <nav className="flex-grow">
                     <ul className="space-y-2">

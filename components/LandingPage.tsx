@@ -175,8 +175,8 @@ const LandingPage = ({ onGetStarted, authUser, userProfile }: { onGetStarted: ()
                             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                         >
                             <LogoIcon className="w-8 h-8 text-emerald-400" />
-                            <span className="text-xl font-semibold text-white">
-                                Grow With Me
+                            <span className="font-montserrat text-xl font-semibold text-white">
+                                row With Me
                             </span>
                         </motion.div>
                         

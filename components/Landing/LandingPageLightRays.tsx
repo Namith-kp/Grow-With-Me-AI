@@ -24,9 +24,9 @@ const LandingPageLightRays: React.FC = () => {
       </div>
       <div className="relative z-10 flex flex-col items-center w-full flex-grow">
         <header className="w-full flex items-center justify-between px-2 md:px-12 mb-8">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <LogoIcon className="w-8 h-8 text-indigo-500" />
-            <span className="text-md md:text-xl font-semibold text-white tracking-tight">Grow With Me</span>
+            <span className="font-montserrat text-md md:text-3xl font-semibold text-white tracking-tight">row With Me</span>
           </div>
           <button className="bg-white text-[#18141c] rounded-2xl px-6 py-2 font-medium text-base shadow hover:bg-gray-200 transition" onClick={handleGetStarted}>Get Started</button>
         </header>

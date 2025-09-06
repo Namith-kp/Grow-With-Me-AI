@@ -1,0 +1,25 @@
+# G Logo PNG Placeholder
+
+This file indicates where the G logo PNG should be placed.
+
+## Branding Update:
+- The G logo represents the 'G' letter in "Grow With Me"
+- Text now displays as "row With Me" (without the G)
+- Logo and text work together as one integrated brand unit
+
+## Instructions:
+1. Replace this file with your G logo PNG
+2. Name the file: g-logo.png
+3. Ensure the PNG has a transparent background
+4. Recommended size: 512x512 pixels or higher for crisp display
+5. The logo will automatically appear in the application
+
+## Current Implementation:
+- The LogoIcon component is set up to use /g-logo.png
+- Fallback SVG is provided if PNG is not found
+- Logo is sized at 40x40px (h-10 w-10) in the header
+- Hover effects and animations are included
+- Text displays as "row With Me" next to the G logo
+
+## File Location:
+Place your g-logo.png file in the public/ folder (same directory as this file)

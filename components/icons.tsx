@@ -8,10 +8,36 @@ export const HamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
 import React from 'react';
 
 export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z" opacity="0.6"/>
-        <path d="M2 12l10 5 10-5-10-5-10 5z"/>
-    </svg>
+    <div className="relative" {...props}>
+        {/* Placeholder for G logo PNG - will be replaced with actual PNG */}
+        <img 
+            src="/g-logo.png" 
+            alt="G Logo - row With Me" 
+            className="w-full h-full object-contain"
+            onError={(e) => {
+                // Fallback to SVG if PNG is not found
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                    parent.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" class="w-full h-full">
+                            <defs>
+                                <linearGradient id="gGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#60A5FA" />
+                                    <stop offset="100%" stopColor="#1E40AF" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M20 6C12.268 6 6 12.268 6 20s6.268 14 14 14 14-6.268 14-14S27.732 6 20 6zm0 2c6.627 0 12 5.373 12 12s-5.373 12-12 12S8 26.627 8 20 13.373 8 20 8z" fill="url(#gGradient)" />
+                            <path d="M20 12c-4.411 0-8 3.589-8 8s3.589 8 8 8c2.206 0 4.2-.896 5.657-2.343L22.828 24.828c-.781.781-2.047.781-2.828 0s-.781-2.047 0-2.828l2.829-2.829c-.781-.781-1.828-1.171-2.829-1.171-2.206 0-4 1.794-4 4s1.794 4 4 4c1.103 0 2-.897 2-2h2c0 2.206-1.794 4-4 4-3.309 0-6-2.691-6-6s2.691-6 6-6c1.103 0 2 .897 2 2h-2c0-1.103-.897-2-2-2z" fill="url(#gGradient)" />
+                            <path d="M26 14c0-1.105.895-2 2-2s2 .895 2 2c0 1.105-.895 2-2 2s-2-.895-2-2z" fill="url(#gGradient)" />
+                            <path d="M28 12l2 2-2 2v-1.5h-1.5v-1h1.5V12z" fill="url(#gGradient)" />
+                        </svg>
+                    `;
+                }
+            }}
+        />
+    </div>
 );
 
 export const ZapIcon = (props: React.SVGProps<SVGSVGElement>) => (

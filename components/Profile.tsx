@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Role, View, Idea } from '../types';
 import AvatarAdjustModal from './AvatarAdjustModal';
 import BannerAdjustModal from './BannerAdjustModal';
@@ -51,6 +51,9 @@ const Profile: React.FC<ProfileProps> = ({
     const [showConnectionsModal, setShowConnectionsModal] = useState(false);
     const [otherUserConnections, setOtherUserConnections] = useState<User[]>([]);
     const [isBannerExpanded, setIsBannerExpanded] = useState(false);
+    const previousConnectionStatus = useRef<string | null>(null);
+    const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hasShownNotification = useRef<boolean>(false);
     const [formData, setFormData] = useState({
         name: '',
         role: Role.Founder,
@@ -132,10 +135,24 @@ const Profile: React.FC<ProfileProps> = ({
         loadIdeas();
     }, [userProfile, readOnly]);
 
+    // Clear notifications when component mounts or user changes
+    useEffect(() => {
+        setConnectionNotification(null);
+        previousConnectionStatus.current = null;
+        hasShownNotification.current = false;
+        
+        // Clear any existing timeout
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+            notificationTimeoutRef.current = null;
+        }
+    }, [userProfile?.id]);
+
     // Real-time connection status
     useEffect(() => {
         if (!readOnly || !userProfile || !currentUser || !userProfile.id || !currentUser.id || userProfile.id === currentUser.id) {
             setConnectionStatus(null);
+            previousConnectionStatus.current = null;
             return;
         }
 
@@ -146,10 +163,36 @@ const Profile: React.FC<ProfileProps> = ({
                 (status) => {
                     if (status && typeof status === 'object') {
                         const statusString = status.isConnected ? 'connected' : status.isPending ? 'requested' : 'none';
+                        const previousStatus = previousConnectionStatus.current;
+                        
+                        console.log('Connection status update:', {
+                            previous: previousStatus,
+                            current: statusString,
+                            isConnected: status.isConnected,
+                            isPending: status.isPending
+                        });
+                        
+                        // TEMPORARILY DISABLED: Only show notification when status changes from non-connected to connected and we haven't shown it yet
+                        // if (statusString === 'connected' && previousStatus !== 'connected' && previousStatus !== null && !hasShownNotification.current) {
+                        //     console.log('Showing connection accepted notification');
+                        //     setConnectionNotification({ type: 'success', message: 'Connection request accepted!' });
+                        //     hasShownNotification.current = true;
+                        //     
+                        //     // Clear any existing timeout
+                        //     if (notificationTimeoutRef.current) {
+                        //         clearTimeout(notificationTimeoutRef.current);
+                        //     }
+                        //     
+                        //     // Auto-clear notification after 3 seconds
+                        //     notificationTimeoutRef.current = setTimeout(() => {
+                        //         setConnectionNotification(null);
+                        //         notificationTimeoutRef.current = null;
+                        //     }, 3000);
+                        // }
+                        
+                        // Update the previous status ref
+                        previousConnectionStatus.current = statusString;
                         setConnectionStatus(statusString);
-                        if (statusString === 'connected') {
-                            setConnectionNotification({ type: 'success', message: 'Connection request accepted!' });
-                        }
                     }
                 }
             );
@@ -158,17 +201,28 @@ const Profile: React.FC<ProfileProps> = ({
                 if (unsubscribe && typeof unsubscribe === 'function') {
                     unsubscribe();
                 }
+                // Clear timeout on cleanup
+                if (notificationTimeoutRef.current) {
+                    clearTimeout(notificationTimeoutRef.current);
+                    notificationTimeoutRef.current = null;
+                }
             };
         } catch (error) {
             console.error('Error setting up connection status listener:', error);
         }
     }, [readOnly, userProfile, currentUser]);
 
-    // Cleanup blob URLs on unmount
+    // Cleanup blob URLs and notifications on unmount
     useEffect(() => {
         return () => {
             if (avatarPreview && avatarPreview.startsWith('blob:')) {
                 URL.revokeObjectURL(avatarPreview);
+            }
+            
+            // Clear notification timeout on unmount
+            if (notificationTimeoutRef.current) {
+                clearTimeout(notificationTimeoutRef.current);
+                notificationTimeoutRef.current = null;
             }
         };
     }, [avatarPreview]);
