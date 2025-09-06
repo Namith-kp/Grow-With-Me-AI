@@ -9,6 +9,7 @@ import IdeaDetailModal from './IdeaDetailModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
+import FounderAvatar from './FounderAvatar';
 
 // Custom hook for responsive animation timing
 const useResponsiveAnimation = () => {
@@ -475,33 +476,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
 
                 {/* Row 2: Avatar, Full Name, Username, and User Type */}
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                    {(() => {
-                        // Always use the stored founderAvatar from the idea for consistency across all users
-                        const avatarSource = idea.founderAvatar;
-                        
-                        // Create a user-like object with the stored avatar and customAvatar flag
-                        // If it's a custom avatar, put it in photoURL field as expected by getSafeAvatarUrl
-                        const userObj = idea.founderCustomAvatar ? {
-                            photoURL: avatarSource,
-                            customAvatar: true
-                        } : {
-                            avatarUrl: avatarSource,
-                            customAvatar: false
-                        };
-                        const safeUrl = getSafeAvatarUrl(userObj);
-                        
-                        if (safeUrl) {
-                            return (
-                                <img src={safeUrl} alt={idea.founderName} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700 shrink-0 shadow-lg" />
-                            );
-                        } else {
-                            return (
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-slate-700 shrink-0 shadow-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs sm:text-sm font-bold">
-                                    {getUserInitials(idea.founderName)}
-                                </div>
-                            );
-                        }
-                    })()}
+                    <FounderAvatar founderId={idea.founderId} founderName={idea.founderName} />
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm sm:text-base font-medium text-slate-200 truncate">{idea.founderName}</span>
