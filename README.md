@@ -1,4 +1,4 @@
-# Run and deploy your AI Studio app
+# Grow With Me 
 
 This contains everything you need to run your app locally.
 
