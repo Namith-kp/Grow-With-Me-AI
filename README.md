@@ -1,17 +1,15 @@
-# Grow With Me 
+# 🚀Grow With Me 
 
-This contains everything you need to run your app locally.
+AI Powered Co-Founder Finding Platform for Founders to build a start-up companies
 
-## Run Locally
+## 🏃‍♂️ Run Locally
 
 **Prerequisites:**  Node.js
 
-
 1. Install dependencies:
    `npm install`
-# Grow With Me
 
-## Setup Instructions
+## 📦 Setup Instructions
 
 1. Clone the repository
 2. Install dependencies:
