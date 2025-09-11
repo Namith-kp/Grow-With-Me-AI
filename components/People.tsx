@@ -9,9 +9,10 @@ interface PeopleProps {
     currentUser: User;
     onMessage: (user: User) => void;
     onRemoveConnection: (user: User) => void;
+    onNavigateToProfile: (user: User) => void;
 }
 
-const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, onRemoveConnection }) => {
+const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, onRemoveConnection, onNavigateToProfile }) => {
     const [isManageMode, setManageMode] = useState(false);
 
     // Removed selectedUser state and related functions - no longer needed without ProfileCard
@@ -52,7 +53,8 @@ const People: React.FC<PeopleProps> = ({ connections, currentUser, onMessage, on
                             {connections.map(user => (
                                 <div 
                                     key={user.id} 
-                                    className="relative bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col items-center text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 transform hover:-translate-y-1"
+                                    className="relative bg-gradient-to-br from-slate-900/90 to-black/90 backdrop-blur-sm border border-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col items-center text-center hover:border-slate-600/70 hover:shadow-2xl hover:shadow-slate-500/10 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                                    onClick={() => onNavigateToProfile(user)}
                                 >
                                     {isManageMode && (
                                         <button 

@@ -9,6 +9,7 @@ import IdeaDetailModal from './IdeaDetailModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
+import { isGoogleAvatarUrl } from '../utils/avatar';
 import FounderAvatar from './FounderAvatar';
 
 // Custom hook for responsive animation timing
@@ -295,7 +296,7 @@ interface IdeaCardProps {
     negotiationStatuses?: Record<string, string>;
     investorCounts?: Record<string, number>;
     onNavigateToNegotiation?: (negotiationId: string) => void;
-    onOpenDetail?: (idea: Idea) => void;
+    onOpenDetail?: (idea: Idea, opts?: { showComments?: boolean }) => void;
 }
 
 const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendingRequest, onManageTeam, joinRequests, onLike, onComment, onDeleteComment, onEdit, onStartNegotiation, negotiationStatuses, investorCounts, onNavigateToNegotiation, onOpenDetail }) => {
@@ -342,7 +343,6 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
         });
     }
     const [commentText, setCommentText] = useState('');
-    const [showComments, setShowComments] = useState(false);
     const [showNegotiation, setShowNegotiation] = useState(false);
     const [negotiation, setNegotiation] = useState(null);
     const [negotiationLoading, setNegotiationLoading] = useState(false);
@@ -559,7 +559,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                             </div>
                             <div className="flex items-center gap-1">
                                 <button
-                                    onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                    onClick={e => { e.stopPropagation(); onOpenDetail?.(idea, { showComments: true }); }}
                                     title="Toggle comments"
                                     className="text-slate-400 hover:text-blue-500 transition-colors"
                                 >
@@ -617,7 +617,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                                         </button>
                                         <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
                                         <button
-                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            onClick={e => { e.stopPropagation(); onOpenDetail?.(idea, { showComments: true }); }}
                                             title="Toggle comments"
                                             className="text-slate-400 hover:text-blue-500 transition-colors"
                                         >
@@ -658,7 +658,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                                         </button>
                                         <span className="text-xs sm:text-sm text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
                                         <button
-                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            onClick={e => { e.stopPropagation(); onOpenDetail?.(idea, { showComments: true }); }}
                                             title="Toggle comments"
                                             className="text-slate-400 hover:text-blue-500 transition-colors"
                                         >
@@ -695,7 +695,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                                         </button>
                                         <span className="text-xs text-slate-400 min-w-[16px] text-center">{idea.likes?.length || 0}</span>
                                         <button
-                                            onClick={e => { e.stopPropagation(); setShowComments(!showComments); }}
+                                            onClick={e => { e.stopPropagation(); onOpenDetail?.(idea, { showComments: true }); }}
                                             title="Toggle comments"
                                             className="text-slate-400 hover:text-blue-500 transition-colors"
                                         >
@@ -716,46 +716,6 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, user, onJoinRequest, hasPendi
                     </div>
                 </div>
 
-                {/* Comments and negotiation deck (unchanged) */}
-                {showComments && (
-                    <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-slate-700/30">
-                        <h5 className="font-bold text-white mb-2 text-xs sm:text-base">Comments</h5>
-                        <div className="space-y-2 sm:space-y-3 max-h-32 sm:max-h-48 overflow-y-auto pr-2">
-                            {idea.comments && idea.comments.length > 0 ? (
-                                idea.comments.map((comment) => (
-                                    <div key={comment.id} className="flex items-start gap-2 group">
-                                        <img src={comment.userAvatar} alt={comment.userName} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
-                                        <div className="bg-slate-800/50 rounded-lg p-2 text-xs sm:text-sm w-full border border-slate-700/30">
-                                            <div className="flex justify-between items-start">
-                                                <p className="font-semibold text-white truncate">{comment.userName}</p>
-                                                {isFounder && (
-                                                    <button onClick={() => onDeleteComment(idea.id, comment)} title="Delete comment" className="text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <p className="text-slate-300 break-words">{comment.text}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-slate-400 text-xs sm:text-sm">No comments yet.</p>
-                            )}
-                        </div>
-                        <form onSubmit={handleCommentSubmit} className="mt-2 sm:mt-3 flex gap-2">
-                            <input
-                                type="text"
-                                value={commentText}
-                                onChange={(e) => setCommentText(e.target.value)}
-                                placeholder="Add a comment..."
-                                className="flex-grow bg-slate-800/50 border border-slate-700/30 rounded-lg py-1 px-2 sm:py-1.5 sm:px-3 text-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all backdrop-blur-sm"
-                            />
-                            <button type="submit" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-1 px-2 sm:py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25">
-                                Post
-                            </button>
-                        </form>
-                    </div>
-                )}
                 {showNegotiation && negotiation && (
                     <NegotiationDeck
                         negotiation={negotiation}
@@ -808,11 +768,17 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
     const [investorCounts, setInvestorCounts] = useState<Record<string, number>>({});
     const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
+    const [detailShowComments, setDetailShowComments] = useState(false);
     const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public'>('all');
     const [myIdeas, setMyIdeas] = useState<Idea[]>([]);
     const [managingTeamFor, setManagingTeamFor] = useState<Idea | null>(null);
     const [negotiatingIdea, setNegotiatingIdea] = useState<Idea | null>(null);
     const focusedRef = React.useRef<HTMLDivElement | null>(null);
+    // Browse filters for Developers/Investors
+    const [filterDomain, setFilterDomain] = useState<string>('');
+    const [filterSkills, setFilterSkills] = useState<string>('');
+    const [filterMaxBudget, setFilterMaxBudget] = useState<string>('');
+    const [showFilters, setShowFilters] = useState<boolean>(false);
 
     const fetchAllData = async () => {
         // Use cache if available and filter hasn't changed
@@ -892,6 +858,39 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
             fetchAllData();
         }
     }, [visibilityFilter]);
+
+    // Derived filtered list for non-founders
+    const visibleIdeas = React.useMemo(() => {
+        let list = ideas;
+        if (user.role !== Role.Founder) {
+            if (filterDomain.trim()) {
+                const q = filterDomain.toLowerCase();
+                list = list.filter(i => (
+                    i.title?.toLowerCase().includes(q) ||
+                    i.description?.toLowerCase().includes(q)
+                ));
+            }
+            if (filterSkills.trim()) {
+                const wanted = filterSkills.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                if (wanted.length) {
+                    list = list.filter(i => {
+                        const have = (i.requiredSkills || []).map(s => s.toLowerCase());
+                        return wanted.every(w => have.includes(w));
+                    });
+                }
+            }
+            if (filterMaxBudget.trim()) {
+                const max = parseInt(filterMaxBudget, 10);
+                if (!Number.isNaN(max)) {
+                    list = list.filter(i => {
+                        const target = i.investmentDetails?.targetInvestment;
+                        return typeof target === 'number' ? target <= max : true;
+                    });
+                }
+            }
+        }
+        return list;
+    }, [ideas, user.role, filterDomain, filterSkills, filterMaxBudget]);
 
     // Fetch user's own ideas when myIdeas tab is active
     const fetchMyIdeas = async () => {
@@ -1085,18 +1084,14 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
         try {
             const comment = {
                 userId: user.id,
-                userName: user.name,
-                userAvatar: user.avatarUrl,
+                userName: user.name || user.username,
+                userAvatar: getSafeAvatarUrl(user) || '',
                 text,
-                timestamp: new Date(),
-            };
+                createdAt: new Date(),
+            } as any;
+            // Persist in background; modal already shows optimistic comment
             await firestoreService.addCommentToIdea(ideaId, comment);
-            ideasCache.current = null; // Invalidate cache
-            fetchAllData();
-            // Also refresh myIdeas if we're on that tab
-            if (activeTab === 'myIdeas') {
-                fetchMyIdeas();
-            }
+            // Avoid reloading ideas to keep UI snappy
         } catch (error) {
             console.error("Failed to add comment:", error);
         }
@@ -1204,6 +1199,22 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                                     🔓 Public Only
                                 </button>
                             </div>
+                            {/* Filter icon for Developers/Investors */}
+                            {(user.role === Role.Developer || user.role === Role.Investor) && (
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`p-2 rounded-lg transition-all duration-200 ${
+                                        showFilters 
+                                            ? 'bg-blue-600 text-white shadow-lg' 
+                                            : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                                    }`}
+                                    title="Toggle advanced filters"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                    </svg>
+                                </button>
+                            )}
                         </div>
                         <div className="text-xs text-slate-400">
                             {visibilityFilter === 'all' ? 'Showing ideas you can see' : 'Showing public ideas only'}
@@ -1229,8 +1240,23 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                                     </p>
                                 </div>
                             )}
+                            {showFilters && (user.role === Role.Developer || user.role === Role.Investor) && (
+                                <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-4 mt-6">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="text-white font-medium">Browse by filters</div>
+                                        <div className="text-xs text-slate-400">Tailor ideas to your interests</div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <input value={filterDomain} onChange={e=>setFilterDomain(e.target.value)} placeholder="Domain / keyword" className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-white" />
+                                        <input value={filterSkills} onChange={e=>setFilterSkills(e.target.value)} placeholder="Required skills (comma)" className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-white" />
+                                        {user.role === Role.Investor && (
+                                            <input value={filterMaxBudget} onChange={e=>setFilterMaxBudget(e.target.value)} placeholder="Max budget ($)" className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-white" />
+                                        )}
+                                    </div>
+                                </div>
+                            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {ideas.map(idea => (
+                {visibleIdeas.map(idea => (
                     <div
                         key={idea.id}
                         data-idea-id={idea.id}
@@ -1243,10 +1269,11 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                             const tag = (e.target as HTMLElement).tagName.toLowerCase();
                             if (tag !== 'button' && tag !== 'svg' && tag !== 'path' && tag !== 'input' && tag !== 'textarea' && tag !== 'a') {
                                 setSelectedIdea(idea);
+                                setDetailShowComments(false);
                                 setDetailOpen(true);
                             }
                         }}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setSelectedIdea(idea); setDetailOpen(true); } }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setSelectedIdea(idea); setDetailShowComments(false); setDetailOpen(true); } }}
                     >
                         <IdeaCard
                             idea={idea}
@@ -1263,7 +1290,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                             negotiationStatuses={negotiationStatuses}
                             investorCounts={investorCounts}
                             onNavigateToNegotiation={onNavigateToNegotiation}
-                            onOpenDetail={(idea) => { setSelectedIdea(idea); setDetailOpen(true); }}
+                            onOpenDetail={(idea, opts) => { setSelectedIdea(idea); setDetailShowComments(Boolean(opts && opts.showComments)); setDetailOpen(true); }}
                         />
                     </div>
                 ))}
@@ -1274,6 +1301,11 @@ const IdeasBoard: React.FC<IdeasBoardProps> = ({ user, onNavigateToNegotiation, 
                             open={detailOpen}
                             onClose={() => { setDetailOpen(false); setTimeout(() => setSelectedIdea(null), 200); }}
                             currentUser={user}
+                            showComments={detailShowComments}
+                            onLike={handleLike}
+                            onShowComments={() => setDetailShowComments(true)}
+                            onAddComment={handleComment}
+                            onDeleteComment={handleDeleteComment}
                         />
                     </React.Suspense>
                 )}

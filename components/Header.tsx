@@ -170,7 +170,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                         </button>
                         <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => setView(View.LANDING)}>
                             <div className="flex items-center justify-center gap-1">
-                                <LogoIcon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                                <LogoIcon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
                                 <span className="font-montserrat font-semibold text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
 
                             </div>
@@ -378,7 +378,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                 </div>
                 <div className="flex items-center space-x-3 cursor-pointer group mb-10 px-2" onClick={() => setView(View.LANDING)}>
                     <div className="flex items-center justify-center gap-1">
-                        <LogoIcon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
+                        <LogoIcon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
                         <span className="font-montserrat font-semibold text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">row With Me</span>
                     </div>
                 </div>

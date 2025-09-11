@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, EnrichedMatch, Role } from '../types';
+import { User, EnrichedMatch, Role, EnrichedNearMatch } from '../types';
 import { ZapIcon, SearchIcon, UserPlusIcon, MessageSquareIcon, CheckCheckIcon, StarIcon } from './icons';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import FeedbackModal from './FeedbackModal';
@@ -14,6 +14,7 @@ import { cn } from '../utils/cn';
 interface DashboardProps {
     user: User;
     matches: EnrichedMatch[];
+    nearMatches?: EnrichedNearMatch[];
     isLoading: boolean;
     error: string | null;
     onFindMatches: () => void;
@@ -56,6 +57,7 @@ const MatchCard: React.FC<{
 }> = ({ match, onMessage, onConnect, onFeedback, onViewProfile, isConnected, isPending, index, hoveredIndex, setHoveredIndex }) => {
     const matchedUser = match.user;
     const scoreColor = match.compatibilityScore > 80 ? 'text-emerald-400' : match.compatibilityScore > 60 ? 'text-amber-400' : 'text-orange-400';
+    const displayName = matchedUser.username ? `@${matchedUser.username}` : matchedUser.name;
 
     return (
         <div 
@@ -103,7 +105,7 @@ const MatchCard: React.FC<{
                                 </div>
                             )}
                             <div>
-                                <h3 className="text-sm font-semibold text-white">{matchedUser.name}</h3>
+                                <h3 className="text-sm font-semibold text-white">{displayName}</h3>
                                 <span className={cn(
                                     "text-xs font-medium px-2 py-1 rounded-full",
                                     matchedUser.role === Role.Developer ? 'bg-blue-900/30 text-blue-300 border border-blue-700/30' : 
@@ -198,7 +200,7 @@ const MatchCard: React.FC<{
                         })()}
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xl font-bold text-white">{matchedUser.name}</h3>
+                                <h3 className="text-xl font-bold text-white">{displayName}</h3>
                                 <span className={cn(
                                     "text-sm font-medium px-3 py-1 rounded-full",
                                     matchedUser.role === Role.Developer ? 'bg-blue-900/30 text-blue-300 border border-blue-700/30' : 
@@ -273,6 +275,7 @@ const MatchCard: React.FC<{
 const Dashboard: React.FC<DashboardProps> = ({
     user,
     matches,
+    nearMatches,
     isLoading,
     error,
     onFindMatches,
@@ -288,6 +291,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     console.log('typeof onViewProfile:', typeof onViewProfile);
     
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    // Removed Create Match Alert integration
     const [feedbackUser, setFeedbackUser] = useState<User | null>(null);
     const [connectionsModalOpen, setConnectionsModalOpen] = useState(false);
     const [connectionIds, setConnectionIds] = useState<string[]>([]);
@@ -447,6 +451,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </motion.div>
 
+                {/* Create Match Alert removed */}
+
                 {/* Tab navigation */}
                 <motion.div 
                     className="mb-8 border-b border-slate-700/30"
@@ -516,6 +522,76 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </motion.div>
                         )}
                     </motion.div>
+                )}
+
+                {/* Near Matches (smart suggestions) */}
+                {!isLoading && (nearMatches && nearMatches.length > 0) && (
+                    <div className="mt-12">
+                        <div className="relative overflow-hidden rounded-2xl border border-slate-800/60 bg-gradient-to-br from-slate-900/70 to-black/70 p-6 mb-6">
+                            <div className="absolute -top-8 -right-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl" />
+                            <div className="absolute -bottom-10 -left-10 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl" />
+                            <div className="relative z-10 flex items-start justify-between gap-4">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-400/30 text-amber-300 mb-3">
+                                        Smart suggestions
+                                    </div>
+                                    <h3 className="text-white text-xl sm:text-2xl font-semibold">Still didn’t find the perfect match?</h3>
+                                    <p className="text-slate-400 text-sm mt-1">Here are some near matches that are close to your preferences. See what’s missing and decide.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {nearMatches!.map((nm, idx) => (
+                                <div key={`${nm.user.id}_${idx}`} className="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-5 hover:border-slate-600/60 transition-colors">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            {(() => {
+                                                const safeUrl = getSafeAvatarUrl(nm.user);
+                                                if (safeUrl) {
+                                                    return (
+                                                        <img 
+                                                            src={safeUrl}
+                                                            alt={nm.user.name}
+                                                            className="w-10 h-10 rounded-full border border-slate-700 object-cover" 
+                                                        />
+                                                    );
+                                                }
+                                                return (
+                                                    <div className="w-10 h-10 rounded-full border border-slate-700 bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                                                        {getUserInitials(nm.user.name)}
+                                                    </div>
+                                                );
+                                            })()}
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-white font-semibold leading-tight">{nm.user.username ? `@${nm.user.username}` : nm.user.name}</div>
+                                                <span className={cn(
+                                                    "text-[10px] font-medium px-2 py-0.5 rounded-full border",
+                                                    nm.user.role === Role.Developer ? 'bg-blue-900/30 text-blue-300 border-blue-700/30' : 
+                                                    nm.user.role === Role.Founder ? 'bg-purple-900/30 text-purple-300 border-purple-700/30' : 
+                                                    'bg-emerald-900/30 text-emerald-300 border-emerald-700/30'
+                                                )}>
+                                                    {nm.user.role}
+                                                </span>
+                                            </div>
+                                            {nm.missingSignals?.length > 0 && (
+                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                    {nm.missingSignals.map((m: string, i: number) => (
+                                                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">{m}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-amber-400 text-sm font-semibold">{nm.proximityScore}%</div>
+                                    </div>
+                                    <div className="text-slate-300 text-sm italic mb-3">"{nm.justification}"</div>
+                                    <div className="mt-2 flex gap-2">
+                                        <button className="flex-1 bg-slate-700/60 hover:bg-slate-600/60 text-white text-sm py-2 rounded-lg" onClick={() => onViewProfile(nm.user)}>View Profile</button>
+                                        <button className="flex-1 bg-slate-700/60 hover:bg-slate-600/60 text-white text-sm py-2 rounded-lg" onClick={() => onMessage(nm.user)}>Message</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
                 {/* Analytics tab */}

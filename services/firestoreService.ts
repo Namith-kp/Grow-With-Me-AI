@@ -1,12 +1,135 @@
 import { db } from '../firebase';
-import { User, Chat, Idea, IdeaJoinRequest, ConnectionRequest, Comment, Negotiation, Offer, Notification, NotificationType } from '../types';
+import { User, Chat, Idea, IdeaJoinRequest, ConnectionRequest, Comment, Negotiation, Offer, Notification, NotificationType, MatchAlert, Role } from '../types';
 import firebase from 'firebase/compat/app';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { getAllCountries, getStatesByCountry } from '../data/locations-comprehensive';
+import { validateNoAbuseOrThrow, validateStringArrayNoAbuseOrThrow, filterAbusiveText } from '../utils/abuse';
 
 type UserCreationData = Omit<User, 'id'>;
 
 export const firestoreService = {
+    // ===== Match Alerts =====
+    createMatchAlert: async (userId: string, alert: Omit<MatchAlert, 'id' | 'createdAt' | 'userId'>): Promise<string> => {
+        const ref = db.collection('match_alerts').doc();
+        const data: Omit<MatchAlert, 'id'> = {
+            ...alert,
+            userId,
+            createdAt: new Date()
+        } as any;
+        await ref.set({ id: ref.id, ...data });
+        return ref.id;
+    },
+    updateMatchAlert: async (alertId: string, data: Partial<MatchAlert>): Promise<void> => {
+        await db.collection('match_alerts').doc(alertId).update(data);
+    },
+    deleteMatchAlert: async (alertId: string): Promise<void> => {
+        await db.collection('match_alerts').doc(alertId).delete();
+    },
+    getUserMatchAlerts: async (userId: string): Promise<MatchAlert[]> => {
+        const snap = await db.collection('match_alerts').where('userId', '==', userId).where('isActive', '==', true).get();
+        return snap.docs.map(d => d.data() as MatchAlert);
+    },
+    // Lightweight matching for alert criteria
+    matchesAlertCriteria: (candidate: User, alert: MatchAlert, candidateIdeaCount?: number): boolean => {
+        if (!alert.isActive) return false;
+        if (alert.roles && alert.roles.length && !alert.roles.includes(candidate.role)) return false;
+        if (alert.locations && alert.locations.length) {
+            const cl = candidate.location?.toLowerCase() || '';
+            const anyLoc = alert.locations.some(l => cl.includes(l.toLowerCase()));
+            if (!anyLoc) return false;
+        }
+        if (alert.interests && alert.interests.length) {
+            const ov = (candidate.interests || []).some(i => alert.interests!.includes(i));
+            if (!ov) return false;
+        }
+        if (alert.skills && alert.skills.length) {
+            const ov = (candidate.skills || []).some(s => alert.skills!.includes(s));
+            if (!ov) return false;
+        }
+        if (typeof alert.minExperienceYears === 'number') {
+            const years = parseInt((candidate.experience || '').match(/\d+/)?.[0] || '0', 10);
+            if (years < alert.minExperienceYears) return false;
+        }
+        if (alert.investorDomains && alert.investorDomains.length) {
+            // If candidate is investor, check their domains; if founder, check interests
+            if (candidate.role === Role.Investor) {
+                const investorDomains = candidate.investorProfile?.interestedDomains || [];
+                const ov = investorDomains.some(d => alert.investorDomains!.includes(d));
+                if (!ov) return false;
+            } else {
+                const ov = (candidate.interests || []).some(d => alert.investorDomains!.includes(d));
+                if (!ov) return false;
+            }
+        }
+        if (typeof alert.minIdeaCount === 'number') {
+            const count = typeof candidateIdeaCount === 'number' ? candidateIdeaCount : 0;
+            if (count < alert.minIdeaCount) return false;
+        }
+        return true;
+    },
+    // Watcher: notify user when new/updated users match alert criteria
+    startMatchAlertWatcher: (currentUserId: string): (() => void) => {
+        let unsubUsers: (() => void) | null = null;
+        let unsubAlerts: (() => void) | null = null;
+        let currentAlerts: MatchAlert[] = [];
+
+        // Helper: evaluate all users against current alerts
+        const evaluate = async (users: User[], alerts: MatchAlert[]) => {
+            if (!alerts || alerts.length === 0) return;
+            const candidates = users.filter(u => u.id !== currentUserId);
+            for (const alert of alerts) {
+                for (const user of candidates) {
+                    let ideaCount: number | undefined = undefined;
+                    if (typeof alert.minIdeaCount === 'number') {
+                        try {
+                            const map = await firestoreService.getIdeaCountsByUserIds([user.id]);
+                            ideaCount = map[user.id] || 0;
+                        } catch {}
+                    }
+                    if (firestoreService.matchesAlertCriteria(user, alert, ideaCount)) {
+                        const existing = await db.collection('notifications')
+                            .where('userId', '==', currentUserId)
+                            .where('type', '==', NotificationType.MATCH_ALERT)
+                            .where('data.alertId', '==', alert.id)
+                            .where('data.matchedUserId', '==', user.id)
+                            .limit(1)
+                            .get();
+                        if (!existing.empty) continue;
+                        await firestoreService.createNotification({
+                            userId: currentUserId,
+                            type: NotificationType.MATCH_ALERT,
+                            title: 'New match alert',
+                            message: `${user.name} fits your alert criteria`,
+                            data: { alertId: alert.id, matchedUserId: user.id, matchedUserName: user.name },
+                            isRead: false,
+                            timestamp: new Date()
+                        });
+                    }
+                }
+            }
+        };
+
+        // Subscribe to users
+        let latestUsers: User[] = [];
+        unsubUsers = db.collection('users').onSnapshot(async (snapshot) => {
+            latestUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User));
+            await evaluate(latestUsers, currentAlerts);
+        });
+
+        // Subscribe to alerts (realtime)
+        unsubAlerts = db.collection('match_alerts')
+            .where('userId', '==', currentUserId)
+            .where('isActive', '==', true)
+            .onSnapshot(async (snap) => {
+                currentAlerts = snap.docs.map(d => d.data() as MatchAlert);
+                await evaluate(latestUsers, currentAlerts);
+            });
+
+        return () => {
+            if (unsubUsers) unsubUsers();
+            if (unsubAlerts) unsubAlerts();
+        };
+    },
     /**
      * Paginated fetch for ideas. Returns { ideas, lastDoc, hasMore }
      * Filters ideas based on visibility: public ideas are shown to everyone,
@@ -62,12 +185,38 @@ export const firestoreService = {
     },
 
     createUserProfile: async (uid: string, data: UserCreationData): Promise<void> => {
-        const userRef = db.collection("users").doc(uid);
-        await userRef.set(data);
+        // Validate user fields
+        try {
+            validateNoAbuseOrThrow('Name', (data as any).name);
+            validateNoAbuseOrThrow('Username', (data as any).username);
+            validateNoAbuseOrThrow('Location', (data as any).location);
+            validateNoAbuseOrThrow('Looking for', (data as any).lookingFor);
+            validateStringArrayNoAbuseOrThrow('Skills', (data as any).skills);
+            validateStringArrayNoAbuseOrThrow('Interests', (data as any).interests);
+        } catch (e) {
+            console.warn('Abusive content blocked in createUserProfile:', e);
+            throw e;
+        }
+        const userRef = db.collection('users').doc(uid);
+        await userRef.set({
+            ...data,
+        });
     },
 
     updateUserProfile: async (uid: string, data: Partial<User>): Promise<void> => {
-        const userRef = db.collection("users").doc(uid);
+        // Validate on update for changed fields
+        try {
+            if (typeof data.name === 'string') validateNoAbuseOrThrow('Name', data.name);
+            if (typeof (data as any).username === 'string') validateNoAbuseOrThrow('Username', (data as any).username);
+            if (typeof data.location === 'string') validateNoAbuseOrThrow('Location', data.location);
+            if (typeof data.lookingFor === 'string') validateNoAbuseOrThrow('Looking for', data.lookingFor);
+            if (Array.isArray(data.skills)) validateStringArrayNoAbuseOrThrow('Skills', data.skills);
+            if (Array.isArray(data.interests)) validateStringArrayNoAbuseOrThrow('Interests', data.interests);
+        } catch (e) {
+            console.warn('Abusive content blocked in updateUserProfile:', e);
+            throw e;
+        }
+        const userRef = db.collection('users').doc(uid);
         await userRef.update(data);
         
         // If avatar is being updated, also update founderAvatar in all user's ideas
@@ -165,6 +314,30 @@ export const firestoreService = {
         }
 
         return users;
+    },
+
+    /**
+     * Returns a map of userId -> number of ideas they've uploaded
+     */
+    getIdeaCountsByUserIds: async (userIds: string[]): Promise<Record<string, number>> => {
+        if (!userIds || userIds.length === 0) return {};
+        const counts: Record<string, number> = {};
+        // Firestore 'in' queries allow up to 10 items; chunk the requests
+        const chunkSize = 10;
+        for (let i = 0; i < userIds.length; i += chunkSize) {
+            const chunk = userIds.slice(i, i + chunkSize);
+            const snapshot = await db.collection('ideas')
+                .where('founderId', 'in', chunk)
+                .get();
+            snapshot.docs.forEach(doc => {
+                const data = doc.data() as Idea;
+                const fid = data.founderId;
+                if (fid) counts[fid] = (counts[fid] || 0) + 1;
+            });
+        }
+        // Ensure all ids are present with at least 0
+        userIds.forEach(id => { if (counts[id] === undefined) counts[id] = 0; });
+        return counts;
     },
 
     getChats: async (uid: string): Promise<Chat[]> => {
@@ -560,12 +733,20 @@ export const firestoreService = {
     },
 
     postIdea: async (idea: Omit<Idea, 'id'>): Promise<void> => {
-        const ideaWithExtras = {
+        // Validate idea content
+        try {
+            validateNoAbuseOrThrow('Idea title', idea.title);
+            validateNoAbuseOrThrow('Idea description', idea.description);
+        } catch (e) {
+            console.warn('Abusive content blocked in postIdea:', e);
+            throw e;
+        }
+        const ideasRef = db.collection('ideas');
+        const ideaRef = ideasRef.doc();
+        await ideaRef.set({
             ...idea,
-            likes: [],
-            comments: [],
-        };
-        await db.collection('ideas').add(ideaWithExtras);
+            id: ideaRef.id,
+        });
     },
 
     getIdeas: async (currentUserId?: string): Promise<Idea[]> => {
@@ -1042,9 +1223,15 @@ export const firestoreService = {
     },
 
     addCommentToIdea: async (ideaId: string, comment: Omit<Comment, 'id'>): Promise<void> => {
-        const commentWithId = { ...comment, id: db.collection('ideas').doc().id };
-        const ideaRef = db.collection('ideas').doc(ideaId);
-        await ideaRef.update({
+        // Sanitize comment content instead of blocking
+        const sanitized = { ...comment, text: filterAbusiveText(comment.text as any) };
+        const ideaDocRef = db.collection('ideas').doc(ideaId);
+        const commentRef = ideaDocRef.collection('comments').doc();
+        const commentWithId = { ...sanitized, id: commentRef.id } as Comment;
+        // Write to subcollection (for scalability)
+        await commentRef.set(commentWithId);
+        // Also reflect in parent idea.comments for existing UI
+        await ideaDocRef.update({
             comments: firebase.firestore.FieldValue.arrayUnion(commentWithId)
         });
     },
@@ -1056,7 +1243,42 @@ export const firestoreService = {
         });
     },
 
+    subscribeToIdeaComments: (
+        ideaId: string,
+        onChange: (comments: Comment[]) => void
+    ): (() => void) => {
+        const commentsRef = db
+            .collection('ideas')
+            .doc(ideaId)
+            .collection('comments');
+        const unsubscribe = commentsRef.onSnapshot((snapshot) => {
+            const items = snapshot.docs.map((doc) => doc.data() as Comment);
+            onChange(items);
+        });
+        return unsubscribe;
+    },
+
+    subscribeToIdeaMeta: (
+        ideaId: string,
+        onChange: (idea: Idea) => void
+    ): (() => void) => {
+        const docRef = db.collection('ideas').doc(ideaId);
+        const unsubscribe = docRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                onChange({ id: doc.id, ...(doc.data() as Idea) });
+            }
+        });
+        return unsubscribe;
+    },
+
     updateIdea: async (ideaId: string, updatedData: Partial<Idea>): Promise<void> => {
+        try {
+            if (typeof updatedData.title === 'string') validateNoAbuseOrThrow('Idea title', updatedData.title);
+            if (typeof updatedData.description === 'string') validateNoAbuseOrThrow('Idea description', updatedData.description);
+        } catch (e) {
+            console.warn('Abusive content blocked in updateIdea:', e);
+            throw e;
+        }
         const ideaRef = db.collection('ideas').doc(ideaId);
         await ideaRef.update(updatedData);
     },

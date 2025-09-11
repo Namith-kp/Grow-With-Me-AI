@@ -53,6 +53,17 @@ export interface EnrichedMatch extends Match {
     isPending: boolean;
 }
 
+export interface NearMatch {
+    userId: string;
+    proximityScore: number; // 0-100 similar to compatibility but below threshold
+    missingSignals: string[]; // e.g., ["different location", "no overlapping skills"]
+    justification: string; // concise reason why close
+}
+
+export interface EnrichedNearMatch extends NearMatch {
+    user: User;
+}
+
 export interface Offer {
     investment: number;
     equity: number;
@@ -106,7 +117,8 @@ export enum NotificationType {
     NEGOTIATION_UPDATE = 'negotiation_update',
     NEW_NEGOTIATION = 'new_negotiation',
     JOIN_REQUEST = 'join_request',
-    JOIN_REQUEST_RESPONSE = 'join_request_response'
+    JOIN_REQUEST_RESPONSE = 'join_request_response',
+    MATCH_ALERT = 'match_alert'
 }
 
 export interface Notification {
@@ -130,10 +142,29 @@ export interface Notification {
         developerName?: string;
         founderId?: string;
         founderName?: string;
+        alertId?: string;
+        matchedUserId?: string;
+        matchedUserName?: string;
     };
     isRead: boolean;
     timestamp: Date;
     createdAt: Date;
+}
+
+// User-configurable matching alerts
+export interface MatchAlert {
+    id: string;
+    userId: string; // owner of this alert
+    createdAt: Date;
+    isActive: boolean;
+    // Criteria fields (all optional, interpreted with AND logic if provided)
+    roles?: Role[];
+    locations?: string[]; // city/state/country strings
+    interests?: string[];
+    skills?: string[];
+    minExperienceYears?: number;
+    investorDomains?: string[]; // for founders looking for investors
+    minIdeaCount?: number;
 }
 
 // Analytics tracking interfaces

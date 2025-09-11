@@ -179,6 +179,7 @@ const App: React.FC = () => {
         };
     }, []);
     const [matches, setMatches] = useState<EnrichedMatch[]>([]);
+    const [nearMatches, setNearMatches] = useState<any[]>([]);
     const [isAuthLoading, setAuthLoading] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -652,7 +653,7 @@ const App: React.FC = () => {
                 potentialPartners = await firestoreService.getUsers(userProfile.id);
             }
             
-            const { matches: foundMatches, isFallback } = await findMatches(userProfile, potentialPartners);
+            const { matches: foundMatches, nearMatches, isFallback } = await findMatches(userProfile, potentialPartners);
             
             // Check if fallback was used
             if (isFallback) {
@@ -675,6 +676,15 @@ const App: React.FC = () => {
                     isPending: connectionStatus.isPending
                 };
             })).then(matches => matches.filter((match): match is EnrichedMatch => match !== null));
+
+            const enrichedNear = nearMatches
+                .map(n => {
+                    const user = potentialPartners.find(p => p.id === n.userId);
+                    if (!user) return null;
+                    return { ...n, user };
+                })
+                .filter((x): x is any => x !== null);
+            setNearMatches(enrichedNear);
 
             if (!isGuestMode && authUser && !authUser.isAnonymous) {
                 try {
@@ -702,6 +712,13 @@ const App: React.FC = () => {
             handleFindMatches();
         }
     }, [userProfile, view, matches.length, isLoading, handleFindMatches]);
+
+    // Match alert watcher disabled
+    // useEffect(() => {
+    //     if (!userProfile) return;
+    //     const stop = firestoreService.startMatchAlertWatcher(userProfile.id);
+    //     return () => { if (stop) stop(); };
+    // }, [userProfile?.id]);
 
     const loadAnalyticsData = useCallback(async () => {
         setAnalyticsLoading(true);
@@ -958,6 +975,7 @@ const App: React.FC = () => {
                     return <Dashboard
                         user={userProfile}
                         matches={filteredMatches}
+                        nearMatches={nearMatches}
                         isLoading={isLoading}
                         error={error}
                         onFindMatches={handleFindMatches}
@@ -1038,6 +1056,7 @@ const App: React.FC = () => {
                             connections={connections}
                             onMessage={handleMessageUser}
                             onRemoveConnection={handleRemoveConnection}
+                            onNavigateToProfile={handleViewUserProfile}
                         />;
             case View.PROFILE:
                 console.log('Rendering Profile view');

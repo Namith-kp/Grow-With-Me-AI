@@ -311,6 +311,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
             case NotificationType.JOIN_REQUEST:
             case NotificationType.JOIN_REQUEST_RESPONSE:
                 return <UserPlusIcon className="w-6 h-6 text-orange-500" />;
+            case NotificationType.MATCH_ALERT:
+                return <UserIcon className="w-6 h-6 text-amber-400" />;
             default:
                 return <div className="w-6 h-6 bg-gray-500 rounded-full" />;
         }
@@ -531,6 +533,39 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                         Remove Invalid Notification
                                     </button>
                                 </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+            if (notification.type === NotificationType.MATCH_ALERT) {
+                return (
+                    <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                            {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-1">
+                                <h3 className={`text-base font-semibold ${notification.isRead ? 'text-white/80' : 'text-white'}`}>
+                                    {notification.title || 'Match Alert'}
+                                </h3>
+                                <span className="text-xs text-white/50 ml-3 flex-shrink-0">
+                                    {notification.timestamp && (notification.isRead 
+                                        ? formatDetailedTimestamp(notification.timestamp)
+                                        : formatTimeAgo(notification.timestamp)
+                                    )}
+                                </span>
+                            </div>
+                            <p className={`text-sm mb-2 ${notification.isRead ? 'text-slate-300/80' : 'text-slate-300'}`}>
+                                {notification.message}
+                            </p>
+                            {notification.data?.matchedUserId && (
+                                <button
+                                    onClick={() => handleViewProfile(notification.data!.matchedUserId!)}
+                                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-white text-xs border border-slate-700/60"
+                                >
+                                    View Profile
+                                </button>
                             )}
                         </div>
                     </div>

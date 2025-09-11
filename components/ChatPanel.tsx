@@ -7,6 +7,7 @@ import firebase from 'firebase/compat/app';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
+import { filterAbusiveText, containsAbusiveLanguage } from '../utils/abuse';
 
 interface ChatPanelProps {
     user: User;
@@ -107,11 +108,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ user, currentUser, onBackToChatLi
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newMessage.trim() === '') return;
+        // Prevent sending if abusive content detected
+        if (containsAbusiveLanguage(newMessage)) {
+            alert('Your message contains inappropriate language. Please revise and try again.');
+            return;
+        }
         
         setIsTyping(true);
         const messageData = {
             senderId: currentUser.id,
-            text: newMessage,
+            text: filterAbusiveText(newMessage),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         const messageText = newMessage;
