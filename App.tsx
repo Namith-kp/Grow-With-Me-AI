@@ -64,6 +64,7 @@ import { Role } from './types';
 import LandingPage from './components/LandingPage';
 import LandingPageSquares from './components/Landing/LandingPageSquares';
 import LandingPageLightRays from './components/Landing/LandingPageLightRays';
+import AdvancedLandingPage from './components/Landing/AdvancedLandingPage';
 import AuthComponent from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
@@ -99,10 +100,13 @@ const App: React.FC = () => {
     // Sync SPA view with browser navigation (back/forward)
     useEffect(() => {
         const handlePopState = () => {
+            console.log('popstate event triggered, current path:', window.location.pathname);
             const path = window.location.pathname;
             if (path.endsWith('/Grow-With-Me-AI/') || path === '/Grow-With-Me-AI/') {
+                console.log('popstate: setting view to LANDING');
                 setView(View.LANDING);
             } else if (path.endsWith('/Grow-With-Me-AI/auth')) {
+                console.log('popstate: setting view to AUTH');
                 setView(View.AUTH);
             } // Add more routes as needed
         };
@@ -625,6 +629,15 @@ const App: React.FC = () => {
                 ...profileWithMappedAvatar,
             };
 
+            // Check if role has changed
+            const roleChanged = updatedProfile.role && updatedProfile.role !== userProfile.role;
+            console.log("Profile update debug:", {
+                oldRole: userProfile.role,
+                newRole: updatedProfile.role,
+                roleChanged,
+                updatedProfile
+            });
+
             if (isGuestMode) {
                 console.log("Guest mode: Updating profile locally.");
                 setUserProfile(updatedUserProfile);
@@ -632,14 +645,43 @@ const App: React.FC = () => {
                 await firestoreService.updateUserProfile(authUser.uid, updatedProfile);
                 setUserProfile(updatedUserProfile);
             }
+
+            // Clear matches and trigger new search if role changed
+            if (roleChanged) {
+                console.log("Role changed from", userProfile.role, "to", updatedProfile.role, "- clearing matches and finding new ones");
+                setMatches([]);
+                setNearMatches([]);
+                setIsLoading(true);
+                // Use the updated profile for finding matches immediately
+                setTimeout(async () => {
+                    console.log("Calling handleFindMatches after role change with updated profile...");
+                    try {
+                        // Call findMatches directly with the updated profile instead of relying on state
+                        await findMatchesWithProfile(updatedUserProfile);
+                        console.log("handleFindMatches completed after role change");
+                    } catch (error) {
+                        console.error("Error in handleFindMatches after role change:", error);
+                        setIsLoading(false);
+                    }
+                }, 500);
+            }
         } catch (err) {
             console.error("Profile update error:", err);
             setError("Failed to update profile. Please try again.");
         }
     };
 
-    const handleFindMatches = useCallback(async () => {
-        if (!userProfile) return;
+    // Helper function to find matches with a specific profile
+    const findMatchesWithProfile = useCallback(async (profile: User) => {
+        if (!profile) {
+            console.log("findMatchesWithProfile: No profile provided");
+            return;
+        }
+        console.log("findMatchesWithProfile: Starting match search for profile:", {
+            id: profile.id,
+            role: profile.role,
+            name: profile.name
+        });
         setIsLoading(true);
         setError(null);
         setMatches([]);
@@ -648,12 +690,12 @@ const App: React.FC = () => {
 
             if (isGuestMode) {
                 console.log("Guest mode: Using dummy data for matches.");
-                potentialPartners = DUMMY_USERS.filter(u => u.id !== userProfile.id);
+                potentialPartners = DUMMY_USERS.filter(u => u.id !== profile.id);
             } else {
-                potentialPartners = await firestoreService.getUsers(userProfile.id);
+                potentialPartners = await firestoreService.getUsers(profile.id);
             }
             
-            const { matches: foundMatches, nearMatches, isFallback } = await findMatches(userProfile, potentialPartners);
+            const { matches: foundMatches, nearMatches, isFallback } = await findMatches(profile, potentialPartners);
             
             // Check if fallback was used
             if (isFallback) {
@@ -667,7 +709,7 @@ const App: React.FC = () => {
                 if (!user) return null;
                 
                 // Get connection status for this match
-                const connectionStatus = await firestoreService.getConnectionStatus(userProfile.id, user.id);
+                const connectionStatus = await firestoreService.getConnectionStatus(profile.id, user.id);
                 
                 return { 
                     ...match, 
@@ -689,7 +731,7 @@ const App: React.FC = () => {
             if (!isGuestMode && authUser && !authUser.isAnonymous) {
                 try {
                     for (const match of foundMatches) {
-                        await analyticsService.trackMatch(userProfile.id, match.userId, match.compatibilityScore);
+                        await analyticsService.trackMatch(profile.id, match.userId, match.compatibilityScore);
                     }
                 } catch (error) {
                     console.error('Error tracking matches:', error);
@@ -704,7 +746,12 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [userProfile, isGuestMode]);
+    }, [isGuestMode, authUser]);
+
+    const handleFindMatches = useCallback(async () => {
+        if (!userProfile) return;
+        await findMatchesWithProfile(userProfile);
+    }, [userProfile, findMatchesWithProfile]);
 
     useEffect(() => {
         // Automatically find matches when the user lands on the dashboard after login/onboarding
@@ -799,11 +846,59 @@ const App: React.FC = () => {
     const filteredMatches = matches.filter(match => {
         if (!searchQuery) return true;
         const user = match.user;
-        const query = searchQuery.toLowerCase();
+        const raw = searchQuery.toLowerCase();
+
+        // Detect role keywords in the query
+        let roleKeyword: Role | null = null;
+        if (/\b(founder|founders)\b/.test(raw)) roleKeyword = Role.Founder;
+        else if (/\b(investor|investors)\b/.test(raw)) roleKeyword = Role.Investor;
+        else if (/\b(developer|developers|engineer|engineers)\b/.test(raw)) roleKeyword = Role.Developer;
+
+        // Remove role words from query to allow additional keyword matching
+        const cleanedQuery = raw.replace(/\b(founders?|investors?|developers?|engineers?)\b/g, '').trim();
+
+        // If a role is specified and doesn't match, filter out
+        if (roleKeyword && user.role !== roleKeyword) {
+            return false;
+        }
+
+        // If only role was specified, it's a match
+        if (cleanedQuery === '') {
+            return true;
+        }
+
+        // Otherwise, match remaining query against name/skills/interests
         return (
-            user.name.toLowerCase().includes(query) ||
-            user.skills.some(skill => skill.toLowerCase().includes(query)) ||
-            user.interests.some(interest => interest.toLowerCase().includes(query))
+            user.name.toLowerCase().includes(cleanedQuery) ||
+            user.skills.some(skill => skill.toLowerCase().includes(cleanedQuery)) ||
+            user.interests.some(interest => interest.toLowerCase().includes(cleanedQuery))
+        );
+    });
+
+    const filteredNearMatches = nearMatches.filter(nm => {
+        if (!searchQuery) return true;
+        const user = nm.user;
+        const raw = searchQuery.toLowerCase();
+
+        let roleKeyword: Role | null = null;
+        if (/\b(founder|founders)\b/.test(raw)) roleKeyword = Role.Founder;
+        else if (/\b(investor|investors)\b/.test(raw)) roleKeyword = Role.Investor;
+        else if (/\b(developer|developers|engineer|engineers)\b/.test(raw)) roleKeyword = Role.Developer;
+
+        const cleanedQuery = raw.replace(/\b(founders?|investors?|developers?|engineers?)\b/g, '').trim();
+
+        if (roleKeyword && user.role !== roleKeyword) {
+            return false;
+        }
+
+        if (cleanedQuery === '') {
+            return true;
+        }
+
+        return (
+            user.name.toLowerCase().includes(cleanedQuery) ||
+            (user.skills || []).some((skill: string) => (skill || '').toLowerCase().includes(cleanedQuery)) ||
+            (user.interests || []).some((interest: string) => (interest || '').toLowerCase().includes(cleanedQuery))
         );
     });
 
@@ -943,8 +1038,15 @@ const App: React.FC = () => {
 
         switch (view) {
             case View.LANDING:
-                // return <LandingPageLightRays onGetStarted={() => navigate(View.AUTH)} authUser={authUser} userProfile={userProfile} />;
-                return <LandingPageLightRays/>;
+                return <AdvancedLandingPage onGetStarted={() => {
+                    console.log('onGetStarted called - forcing navigation to AUTH');
+                    console.log('Current view before:', view);
+                    setError(null);
+                    setView(View.AUTH);
+                    console.log('setView(View.AUTH) called');
+                    // Also update URL to prevent popstate interference
+                    window.history.pushState({}, '', '/Grow-With-Me-AI/auth');
+                }} authUser={authUser} userProfile={userProfile} />;
             case View.AUTH:
                 return <AuthComponent error={error} onAuthSuccess={async (user) => {
                     // After successful authentication, check for passkeys and show appropriate prompt
@@ -975,7 +1077,7 @@ const App: React.FC = () => {
                     return <Dashboard
                         user={userProfile}
                         matches={filteredMatches}
-                        nearMatches={nearMatches}
+                        nearMatches={filteredNearMatches}
                         isLoading={isLoading}
                         error={error}
                         onFindMatches={handleFindMatches}
@@ -1118,7 +1220,9 @@ const App: React.FC = () => {
                 if (!userProfile) return null;
                 console.log('Rendering Dashboard with onViewProfile:', handleViewUserProfile);
                 console.log('handleViewUserProfile function:', typeof handleViewUserProfile);
-                return <Dashboard user={userProfile} matches={filteredMatches} isLoading={isLoading} error={error} onFindMatches={handleFindMatches} searchQuery={searchQuery} setSearchQuery={setSearchQuery} hasActiveSearch={matches.length > 0} onMessage={handleMessageUser} onViewProfile={handleViewUserProfile} />;
+                return <Dashboard user={userProfile} matches={filteredMatches} nearMatches={filteredNearMatches} isLoading={isLoading} error={error} onFindMatches={handleFindMatches} searchQuery={searchQuery} setSearchQuery={setSearchQuery} hasActiveSearch={matches.length > 0} onMessage={handleMessageUser} onViewProfile={handleViewUserProfile} onRequestsUpdated={() => {
+                    console.log("Requests updated");
+                }} />;
         }
     };
 
@@ -1136,7 +1240,7 @@ const App: React.FC = () => {
 
     return (
         <CacheProvider>
-            <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+            <div className={`bg-black font-sans flex ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS ? 'h-screen overflow-hidden' : 'min-h-screen'} w-full`} style={{ margin: 0, padding: 0 }}>
                 {(areKeysMissing || authConfigError === 'unauthorized-domain') && <ApiKeysNotice isDomainError={authConfigError === 'unauthorized-domain'} />}
                 {(view !== View.LANDING && view !== View.AUTH && view !== View.ONBOARDING) && (
                     <Header 

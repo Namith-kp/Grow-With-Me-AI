@@ -810,6 +810,15 @@ export const firestoreService = {
     },
 
     /**
+     * Get all public ideas (for similarity checking)
+     */
+    getPublicIdeas: async (): Promise<Idea[]> => {
+        const ideasRef = db.collection('ideas').where('visibility', '==', 'public');
+        const snapshot = await ideasRef.get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Idea));
+    },
+
+    /**
      * Get all ideas visible to a specific user
      * Includes public ideas and private ideas from connected users
      */

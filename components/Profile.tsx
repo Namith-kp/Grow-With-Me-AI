@@ -9,6 +9,12 @@ import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 import { firestoreService } from '../services/firestoreService';
 import { getAllCountries, getStatesByCountry, getCitiesByState, Country, State } from '../data/locations-comprehensive';
 import SearchableDropdown from './SearchableDropdown';
+import { db } from '../firebase';
+import MultiSelectDropdown from './MultiSelectDropdown';
+import SingleSelectDropdown from './SingleSelectDropdown';
+import { ALL_SKILLS, SKILL_CATEGORIES } from '../data/skills';
+import { EXPERIENCE_LEVELS, BUSINESS_EXPERIENCE_LEVELS, INVESTMENT_EXPERIENCE_LEVELS } from '../data/experience';
+import { INTERESTS_AND_DOMAINS, DOMAIN_CATEGORIES } from '../data/interests';
 
 interface ProfileProps {
     userProfile: User | null;
@@ -38,6 +44,7 @@ const Profile: React.FC<ProfileProps> = ({
     setView
 }) => {
     const [isEditing, setIsEditing] = useState(false);
+    const [showPasskeyReminder, setShowPasskeyReminder] = useState(false);
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [ideasLoading, setIdeasLoading] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -151,6 +158,82 @@ const Profile: React.FC<ProfileProps> = ({
             setBannerPreview((userProfile as any).bannerURL || null);
         }
     }, [userProfile]);
+
+    // Show passkey setup reminder on own profile if user skipped during signup
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            if (userProfile && !readOnly) {
+                const skipped = !!(userProfile as any).passkeySkipped;
+                if (!cancelled) setShowPasskeyReminder(skipped);
+                try {
+                    // Fallback: if no credentials are registered, show reminder
+                    const snap = await db.collection('users').doc(userProfile.id).collection('webauthnCredentials').limit(1).get();
+                    if (!cancelled && snap.empty) {
+                        setShowPasskeyReminder(true);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            } else if (!cancelled) {
+                setShowPasskeyReminder(false);
+            }
+        };
+        run();
+        return () => { cancelled = true; };
+    }, [userProfile, readOnly]);
+
+    const handlePasskeySetupFromProfile = async () => {
+        if (!userProfile) return;
+        try {
+            const { startRegistration } = await import('@simplewebauthn/browser');
+            const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE_URL || '/api';
+
+            const uid = userProfile.id;
+            const userEmail = userProfile.email || '';
+            const beginRes = await fetch(`${functionsBase}/webauthn/register/begin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid })
+            });
+            if (!beginRes.ok) {
+                const text = await beginRes.text();
+                throw new Error(`Begin failed: ${beginRes.status} ${text}`);
+            }
+            const begin = await beginRes.json();
+
+            const attResp = await startRegistration(begin);
+
+            const finishRes = await fetch(`${functionsBase}/webauthn/register/finish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    uid,
+                    response: attResp,
+                    userEmail,
+                    userProvider: (userProfile as any).providerId || 'unknown'
+                })
+            });
+            if (!finishRes.ok) {
+                const text = await finishRes.text();
+                throw new Error(`Finish failed: ${finishRes.status} ${text}`);
+            }
+            const finish = await finishRes.json();
+
+            if (finish?.verified) {
+                setShowPasskeyReminder(false);
+                if (onUpdateProfile) {
+                    await onUpdateProfile({ passkeySkipped: false } as any);
+                }
+                setConnectionNotification({ type: 'success', message: 'Passkey set up successfully.' });
+            } else {
+                throw new Error('Passkey registration failed');
+            }
+        } catch (e: any) {
+            console.error('Passkey setup error:', e);
+            setConnectionNotification({ type: 'error', message: `Passkey setup failed: ${e?.message || 'Unknown error'}` });
+        }
+    };
 
     // Load user's ideas
     useEffect(() => {
@@ -815,6 +898,31 @@ const Profile: React.FC<ProfileProps> = ({
                             />
                     </div>
                 </div>
+
+                {/* Passkey Setup Reminder (own profile) */}
+                {!readOnly && showPasskeyReminder && (
+                    <div className="px-3 sm:px-4 mt-3">
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-900/20 text-amber-100 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="text-sm">
+                                For stronger security and seamless sign-in across devices, set up a passkey.
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handlePasskeySetupFromProfile}
+                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm"
+                                >
+                                    Set up passkey
+                                </button>
+                                <button
+                                    onClick={() => setShowPasskeyReminder(false)}
+                                    className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700/60 text-slate-200 rounded-lg text-sm"
+                                >
+                                    Not now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Connection Status Notification */}
                 <AnimatePresence>
@@ -1645,20 +1753,20 @@ const Profile: React.FC<ProfileProps> = ({
                                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-6 flex items-center">
                                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 mr-3 sm:mr-4">
                                             <BriefcaseIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                                    </div>
+                                        </div>
                                         Skills & Experience
                                     </h3>
                                     <div className="space-y-4 sm:space-y-6">
                                         <div>
                                             <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Skills</label>
                                         {isEditing ? (
-                                            <input
-                                                type="text"
-                                                name="skills"
-                                                value={formData.skills}
-                                                onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
-                                                placeholder="e.g., React, Product Management, Sales"
+                                            <MultiSelectDropdown
+                                                options={ALL_SKILLS}
+                                                selectedValues={formData.skills.split(',').map(s => s.trim()).filter(s => s)}
+                                                onChange={(values) => setFormData(prev => ({ ...prev, skills: values.join(', ') }))}
+                                                placeholder="Select your skills..."
+                                                categories={SKILL_CATEGORIES}
+                                                className="bg-slate-800/50 border-slate-700/50 text-white"
                                             />
                                         ) : (
                                                 <div className="flex flex-wrap gap-2 sm:gap-3 bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4">
@@ -1682,15 +1790,15 @@ const Profile: React.FC<ProfileProps> = ({
                                         )}
                                     </div>
                                         <div>
-                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Experience</label>
+                                            <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Experience Level</label>
                                         {isEditing ? (
-                                            <textarea
-                                                name="experience"
-                                                    rows={4}
-                                                value={formData.experience}
-                                                onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 resize-none placeholder-slate-500 text-sm sm:text-base shadow-lg"
-                                                placeholder="Describe your professional experience..."
+                                            <SingleSelectDropdown
+                                                options={userProfile.role === Role.Founder ? BUSINESS_EXPERIENCE_LEVELS : EXPERIENCE_LEVELS}
+                                                selectedValue={formData.experience}
+                                                onChange={(value) => setFormData(prev => ({ ...prev, experience: value }))}
+                                                placeholder="Select your experience level..."
+                                                className="bg-slate-800/50 border-slate-700/50 text-white"
+                                                allowCustom={true}
                                             />
                                         ) : (
                                                 <p className="text-white bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4 text-sm sm:text-base">{(userProfile as any).experience || 'Not specified'}</p>
@@ -1716,13 +1824,13 @@ const Profile: React.FC<ProfileProps> = ({
                                         <div>
                                             <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Interests</label>
                                         {isEditing ? (
-                                            <input
-                                                type="text"
-                                                name="interests"
-                                                value={formData.interests}
-                                                onChange={handleChange}
-                                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
-                                                placeholder="e.g., AI, FinTech, Sustainable Tech"
+                                            <MultiSelectDropdown
+                                                options={INTERESTS_AND_DOMAINS}
+                                                selectedValues={formData.interests.split(',').map(s => s.trim()).filter(s => s)}
+                                                onChange={(values) => setFormData(prev => ({ ...prev, interests: values.join(', ') }))}
+                                                placeholder="Select your interests..."
+                                                categories={DOMAIN_CATEGORIES}
+                                                className="bg-slate-800/50 border-slate-700/50 text-white"
                                             />
                                         ) : (
                                                 <div className="flex flex-wrap gap-2 sm:gap-3 bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4">
@@ -1783,13 +1891,13 @@ const Profile: React.FC<ProfileProps> = ({
                                             <div>
                                                 <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Investment Domains</label>
                                         {isEditing ? (
-                                            <input
-                                                type="text"
-                                                name="interestedDomains"
-                                                value={formData.interestedDomains}
-                                                onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 lg:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 placeholder-slate-500 text-sm sm:text-base shadow-lg"
-                                                placeholder="e.g., SaaS, FinTech, HealthTech"
+                                            <MultiSelectDropdown
+                                                options={INTERESTS_AND_DOMAINS}
+                                                selectedValues={formData.interestedDomains.split(',').map(s => s.trim()).filter(s => s)}
+                                                onChange={(values) => setFormData(prev => ({ ...prev, interestedDomains: values.join(', ') }))}
+                                                placeholder="Select investment domains..."
+                                                categories={DOMAIN_CATEGORIES}
+                                                className="bg-slate-800/50 border-slate-700/50 text-white"
                                             />
                                         ) : (
                                                     <div className="flex flex-wrap gap-2 sm:gap-3 bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4">
@@ -1811,13 +1919,13 @@ const Profile: React.FC<ProfileProps> = ({
                                             <div>
                                                 <label className="block text-sm sm:text-base font-medium text-slate-400 mb-3">Investment Experience</label>
                                         {isEditing ? (
-                                            <textarea
-                                                name="investmentExperience"
-                                                        rows={4}
-                                                value={formData.investmentExperience}
-                                                onChange={handleChange}
-                                                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 sm:p-4 text-white focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-300 resize-none placeholder-slate-500 text-sm sm:text-base shadow-lg"
-                                                placeholder="Describe your investment experience..."
+                                            <SingleSelectDropdown
+                                                options={INVESTMENT_EXPERIENCE_LEVELS}
+                                                selectedValue={formData.investmentExperience}
+                                                onChange={(value) => setFormData(prev => ({ ...prev, investmentExperience: value }))}
+                                                placeholder="Select your investment experience..."
+                                                className="bg-slate-800/50 border-slate-700/50 text-white"
+                                                allowCustom={true}
                                             />
                                         ) : (
                                                     <p className="text-white bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 sm:p-4 text-sm sm:text-base">{userProfile.investorProfile.investmentExperience}</p>

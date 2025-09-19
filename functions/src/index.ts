@@ -22,15 +22,29 @@ const db = admin.firestore();
 
 const app = express();
 
-// CORS configuration
-app.use(cors({ 
-  origin: ['http://localhost:5173', 'https://grow-with-me-ai.vercel.app'],
+// CORS configuration (echo request origin; suitable for dev/prod mix)
+app.use(cors({
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle preflight OPTIONS requests
+// Universal CORS headers (defensive) and preflight short-circuit
+app.use((req, res, next) => {
+  const origin = req.get('origin') || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).send('');
+  }
+  next();
+});
+
+// Keep cors middleware as well (harmless with above guard)
 app.options('*', cors());
 
 app.use(express.json());
@@ -69,16 +83,15 @@ const getRpID = (req: any) => {
   return 'grow-with-me-ai.vercel.app';
 };
 
-const getOrigin = (req: any) => {
+const getAllowedOrigins = (req: any): string[] => {
   const origin = req.get('origin') || req.get('referer');
-  console.log('Request origin for getOrigin:', origin);
-  
-  if (origin) {
-    return origin;
-  }
-  
-  // For mobile apps or unknown origins, use the production domain
-  return 'https://grow-with-me-ai.vercel.app';
+  console.log('Request origin for allowedOrigins:', origin);
+  const list = [
+    'http://localhost:5173',
+    'https://grow-with-me-ai.vercel.app',
+  ];
+  if (origin && !list.includes(origin)) list.push(origin);
+  return list;
 };
 
 app.post('/webauthn/register/begin', async (req, res) => {
@@ -98,9 +111,10 @@ app.post('/webauthn/register/begin', async (req, res) => {
       userID: uid,
       userName: uid,
       attestationType: 'none',
-      authenticatorSelection: { 
-        residentKey: 'preferred', 
-        userVerification: 'preferred' 
+      authenticatorSelection: {
+        residentKey: 'required',
+        requireResidentKey: true,
+        userVerification: 'preferred'
       },
       excludeCredentials,
     });
@@ -128,12 +142,12 @@ app.post('/webauthn/register/finish', async (req, res) => {
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge,
-      expectedOrigin: getOrigin(req),
+      expectedOrigin: getAllowedOrigins(req),
       expectedRPID: getRpID(req),
     });
     
     if (!verification.verified || !verification.registrationInfo) {
-      return res.status(400).json({ error: 'verification_failed' });
+      return res.status(400).json({ error: 'verification_failed', details: verification });
     }
     
     const { credentialPublicKey, credentialID, counter } = verification.registrationInfo;
@@ -141,6 +155,8 @@ app.post('/webauthn/register/finish', async (req, res) => {
       credentialId: Buffer.from(credentialID).toString('base64url'),
       publicKey: Buffer.from(credentialPublicKey).toString('base64url'),
       counter,
+      // Attempt to persist client-reported transports for better UX later
+      transports: (response?.response?.transports as string[] | undefined) || undefined,
       userEmail: req.body.userEmail,
       userProvider: req.body.userProvider,
       createdAt: new Date(),
@@ -172,7 +188,8 @@ app.post('/webauthn/login/begin', async (req, res) => {
     const options = await generateAuthenticationOptions({
       rpID: getRpID(req),
       userVerification: 'preferred',
-      allowCredentials: allowCredentials.length ? allowCredentials : undefined,
+      // Allow discovery of any credential for this RP ID (enables cross-device/phone passkeys)
+      allowCredentials: undefined,
     });
     
     await db.collection('users').doc(uid).set({ 
@@ -203,7 +220,7 @@ app.post('/webauthn/login/finish', async (req, res) => {
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
-      expectedOrigin: getOrigin(req),
+      expectedOrigin: getAllowedOrigins(req),
       expectedRPID: getRpID(req),
       authenticator: (() => {
         const id = response.id as string;
@@ -219,7 +236,7 @@ app.post('/webauthn/login/finish', async (req, res) => {
     });
     
     if (!verification.verified || !verification.authenticationInfo) {
-      return res.status(400).json({ error: 'verification_failed' });
+      return res.status(400).json({ error: 'verification_failed', details: verification });
     }
     
     const { newCounter, credentialID } = verification.authenticationInfo;

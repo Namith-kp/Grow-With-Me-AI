@@ -180,6 +180,95 @@ const normalize = (value: number, max: number): number => {
 
 const overlapCount = (a: string[] = [], b: string[] = []): number => a.filter(x => b.includes(x)).length;
 
+// Role-specific experience scoring
+const calculateExperienceScore = (currentUser: User, user: User): number => {
+    if (!currentUser.experience || !user.experience) return 0;
+
+    // Same role - direct comparison
+    if (currentUser.role === user.role) {
+        if (currentUser.experience === user.experience) return 10;
+        
+        // For Developer role - compare years numerically
+        if (currentUser.role === Role.Developer) {
+            const currentYears = extractYearsFromExperience(currentUser.experience);
+            const userYears = extractYearsFromExperience(user.experience);
+            
+            if (currentYears >= 0 && userYears >= 0) {
+                const diff = Math.abs(currentYears - userYears);
+                if (diff <= 1) return 8;      // ±1 year
+                if (diff <= 2) return 6;      // ±2 years  
+                if (diff <= 3) return 4;      // ±3 years
+                return 2;                     // Different but both have experience
+            }
+        }
+        
+        // For Founder/Investor roles - categorical matching
+        return 4; // Different experience levels but same role
+    }
+    
+    // Cross-role matching - complementary experience levels
+    return calculateCrossRoleExperienceScore(currentUser, user);
+};
+
+// Extract numeric years from experience string
+const extractYearsFromExperience = (experience: string): number => {
+    if (!experience) return -1;
+    if (experience.includes('15+')) return 15;
+    const match = experience.match(/(\d+)/);
+    return match ? parseInt(match[1]) : -1;
+};
+
+// Map experience levels to numeric scales for cross-role comparison
+const getExperienceLevel = (role: Role, experience: string): number => {
+    if (role === Role.Developer) {
+        const years = extractYearsFromExperience(experience);
+        if (years >= 0) return Math.min(years / 3, 5); // 0-5 scale
+    }
+    
+    if (role === Role.Founder) {
+        const businessLevels = {
+            'First-time Entrepreneur': 1,
+            'Serial Entrepreneur (2-3 ventures)': 3,
+            'Experienced Entrepreneur (4+ ventures)': 4,
+            'Corporate Executive': 3,
+            'Industry Veteran (10+ years)': 5,
+            'C-Level Executive': 4,
+            'Board Member/Advisor': 5
+        };
+        return businessLevels[experience as keyof typeof businessLevels] || 2;
+    }
+    
+    if (role === Role.Investor) {
+        const investmentLevels = {
+            'New to Investing': 1,
+            'Angel Investor (1-5 investments)': 2,
+            'Active Angel (6-20 investments)': 3,
+            'Super Angel (20+ investments)': 4,
+            'Micro VC': 4,
+            'Institutional VC': 5,
+            'Corporate Venture Capital': 5
+        };
+        return investmentLevels[experience as keyof typeof investmentLevels] || 2;
+    }
+    
+    return 2; // Default middle level
+};
+
+// Calculate experience score for different roles
+const calculateCrossRoleExperienceScore = (currentUser: User, user: User): number => {
+    const currentLevel = getExperienceLevel(currentUser.role, currentUser.experience!);
+    const userLevel = getExperienceLevel(user.role, user.experience!);
+    
+    // Complementary experience levels often work well together
+    const levelDiff = Math.abs(currentLevel - userLevel);
+    
+    if (levelDiff === 0) return 8;        // Same experience level
+    if (levelDiff === 1) return 7;        // Adjacent levels - often complementary
+    if (levelDiff === 2) return 5;        // Moderate difference
+    if (levelDiff === 3) return 3;        // Significant difference
+    return 1;                             // Very different experience levels
+};
+
 const rolesComplementary = (a: Role, b: Role): boolean => {
     if (a === b) return false;
     const set = new Set([a, b]);
@@ -207,8 +296,8 @@ const generateFallbackMatches = (currentUser: User, potentialPartners: User[], i
         let score = 0; // start from 0, add weights
 
         // 1) Role complementarity (0-20)
-        if (rolesComplementary(currentUser.role, user.role)) score += 18;
-        else if (currentUser.role !== user.role) score += 10; // different but not ideal pair
+        if (rolesComplementary(currentUser.role, user.role)) score += 20;
+        else if (currentUser.role !== user.role) score += 12; // different but not ideal pair
 
         // 2) Location proximity (0-10)
         const locA = currentUser.location?.toLowerCase();
@@ -216,24 +305,21 @@ const generateFallbackMatches = (currentUser: User, potentialPartners: User[], i
         if (locA && locB) {
             const sameExact = locA === locB;
             const sameCountry = locA.split(',').pop()?.trim() === locB.split(',').pop()?.trim();
-            if (sameExact) score += 10; 
-            else if (sameCountry) score += 6;
+            if (sameExact) score += 12; 
+            else if (sameCountry) score += 8;
             // If relaxation says 'any', we don't penalize but also don't add extra points beyond what's above
         }
 
         // 3) Domain/interest alignment (0-15)
         const commonInterests = overlapCount(currentUser.interests, user.interests);
-        score += Math.min(commonInterests * 3, 15);
+        score += Math.min(commonInterests * 4, 16);
 
         // 4) Skills overlap/complementarity (0-20)
         const commonSkills = overlapCount(currentUser.skills, user.skills);
         score += Math.min(commonSkills * 4, 20);
 
         // 5) Experience alignment (0-10)
-        if (currentUser.experience && user.experience) {
-            if (currentUser.experience === user.experience) score += 8;
-            else score += 4;
-        }
+        score += calculateExperienceScore(currentUser, user);
 
         // 6) Investor-investment domain/budget compatibility (0-10)
         if ((currentUser.role === Role.Investor && user.role === Role.Founder) || (currentUser.role === Role.Founder && user.role === Role.Investor)) {
@@ -241,7 +327,7 @@ const generateFallbackMatches = (currentUser: User, potentialPartners: User[], i
             if (investor.investorProfile) {
                 // Domain touch with interests
                 const domainOverlap = overlapCount(investor.investorProfile.interestedDomains || [], (currentUser.role === Role.Investor ? user : currentUser).interests || []);
-                score += Math.min(domainOverlap * 3, 6);
+                score += Math.min(domainOverlap * 4, 16);
                 // Budget presence adds small confidence
                 if (typeof investor.investorProfile.budget?.min === 'number' && typeof investor.investorProfile.budget?.max === 'number') {
                     score += 2;
@@ -254,7 +340,7 @@ const generateFallbackMatches = (currentUser: User, potentialPartners: User[], i
         const ageB = yearsFromDob(user.dateOfBirth);
         if (ageA !== null && ageB !== null) {
             const diff = Math.abs(ageA - ageB);
-            if (diff <= 5) score += 5;
+            if (diff <= 5) score += 8;
             else if (diff <= 10) score += 3;
         }
 

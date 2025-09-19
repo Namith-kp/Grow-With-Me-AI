@@ -84,10 +84,30 @@ const NegotiationsBoard: React.FC<NegotiationsBoardProps> = ({ user, setIsMobile
                founderName.includes(searchLower);
     });
 
-    // Separate negotiations by status
-    const activeNegotiations = filteredNegotiations.filter(n => n.status === 'active');
-    const acceptedNegotiations = filteredNegotiations.filter(n => n.status === 'accepted');
-    const declinedNegotiations = filteredNegotiations.filter(n => n.status === 'declined');
+    // Helper: get latest activity time (last offer or negotiation timestamp)
+    const getLastActivityTime = (n: Negotiation): number => {
+        const baseTime = n.timestamp instanceof Date
+            ? n.timestamp.getTime()
+            : (n.timestamp ? new Date(n.timestamp as any).getTime() : 0);
+        const lastOffer = n.offers && n.offers.length > 0 ? n.offers[n.offers.length - 1] : null;
+        const offerTime = lastOffer
+            ? (lastOffer.timestamp instanceof Date
+                ? lastOffer.timestamp.getTime()
+                : (lastOffer.timestamp ? new Date(lastOffer.timestamp as any).getTime() : 0))
+            : 0;
+        return Math.max(baseTime || 0, offerTime || 0);
+    };
+
+    // Separate negotiations by status and sort by latest activity desc
+    const activeNegotiations = filteredNegotiations
+        .filter(n => n.status === 'active')
+        .sort((a, b) => getLastActivityTime(b) - getLastActivityTime(a));
+    const acceptedNegotiations = filteredNegotiations
+        .filter(n => n.status === 'accepted')
+        .sort((a, b) => getLastActivityTime(b) - getLastActivityTime(a));
+    const declinedNegotiations = filteredNegotiations
+        .filter(n => n.status === 'declined')
+        .sort((a, b) => getLastActivityTime(b) - getLastActivityTime(a));
 
     const isFounder = user.role === Role.Founder || user.role === 'founder';
 

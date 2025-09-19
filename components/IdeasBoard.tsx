@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Idea, Role, User, IdeaJoinRequest, Comment, Negotiation } from '../types';
 import { firestoreService } from '../services/firestoreService';
+import { ideaSimilarityService, IdeaValidationResult, SimilarityResult } from '../services/ideaSimilarityService';
 import { PlusIcon, LightbulbIcon, UsersIcon, CodeIcon, CheckIcon, HeartIcon, ChatBubbleLeftRightIcon, TrashIcon, PencilIcon, StarIcon } from './icons';
 import JoinRequests from './JoinRequests';
 import TeamManagementModal from './TeamManagementModal';
 import NegotiationDeck from './NegotiationDeck';
 import IdeaDetailModal from './IdeaDetailModal';
-import { motion, AnimatePresence } from 'motion/react';
+import IdeaSimilarityModal from './IdeaSimilarityModal';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 import { getSafeAvatarUrl, getUserInitials } from '../utils/avatar';
 import { isGoogleAvatarUrl } from '../utils/avatar';
@@ -50,6 +52,9 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
     const [visibility, setVisibility] = useState<'public' | 'private'>('public');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [similarityResult, setSimilarityResult] = useState<SimilarityResult | null>(null);
+    const [showSimilarityModal, setShowSimilarityModal] = useState(false);
+    const [pendingIdea, setPendingIdea] = useState<Omit<Idea, 'id'> | null>(null);
 
     useEffect(() => {
         if (editingIdea) {
@@ -132,6 +137,20 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
             };
 
             try {
+                // Check for similar ideas before posting
+                console.log('Checking for similar ideas...');
+                const validationResult = await ideaSimilarityService.validateIdea(newIdea, user.id);
+                
+                if (!validationResult.isValid || validationResult.warnings.length > 0) {
+                    console.log('Similar ideas found, showing modal:', validationResult);
+                    setSimilarityResult(validationResult);
+                    setPendingIdea(newIdea);
+                    setShowSimilarityModal(true);
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // No similar ideas found, proceed with posting
                 await firestoreService.postIdea(newIdea);
                 setTitle('');
                 setDescription('');
@@ -141,11 +160,50 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
                 setEquityOffered('');
                 onIdeaPosted();
             } catch (err) {
-                setError('Failed to post idea. Please try again.');
-                console.error(err);
-            } finally {
+                setError('Failed to check for similar ideas. Please try again.');
+                console.error('Similarity check error:', err);
                 setIsSubmitting(false);
             }
+        }
+    };
+
+    // Handle similarity modal actions
+    const handleSimilarityModalEdit = () => {
+        setShowSimilarityModal(false);
+        setSimilarityResult(null);
+        setPendingIdea(null);
+        // Keep the form open for editing
+    };
+
+    const handleSimilarityModalCancel = () => {
+        setShowSimilarityModal(false);
+        setSimilarityResult(null);
+        setPendingIdea(null);
+        setIsSubmitting(false);
+    };
+
+    const handleSimilarityModalProceed = async () => {
+        if (!pendingIdea) return;
+        
+        setShowSimilarityModal(false);
+        setIsSubmitting(true);
+        
+        try {
+            await firestoreService.postIdea(pendingIdea);
+            setTitle('');
+            setDescription('');
+            setRequiredSkills([]);
+            setSkillInput('');
+            setTargetInvestment('');
+            setEquityOffered('');
+            setSimilarityResult(null);
+            setPendingIdea(null);
+            onIdeaPosted();
+        } catch (err) {
+            setError('Failed to post idea. Please try again.');
+            console.error('Error posting idea:', err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -277,6 +335,19 @@ const IdeaPostForm: React.FC<IdeaPostFormProps> = ({ user, onIdeaPosted, editing
                     {isSubmitting ? (editingIdea ? 'Saving...' : 'Posting...') : (editingIdea ? 'Save Changes' : 'Post Idea')}
                 </button>
             </div>
+            
+            {/* Similarity Check Modal */}
+            {showSimilarityModal && similarityResult && (
+                <IdeaSimilarityModal
+                    isOpen={showSimilarityModal}
+                    onClose={handleSimilarityModalCancel}
+                    validationResult={similarityResult}
+                    onEdit={handleSimilarityModalEdit}
+                    onCancel={handleSimilarityModalCancel}
+                    onProceed={handleSimilarityModalProceed}
+                    newIdeaTitle={pendingIdea?.title || ''}
+                />
+            )}
         </form>
     );
 };

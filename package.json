@@ -14,8 +14,10 @@
     "@google/genai": "^1.11.0",
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-slot": "^1.2.3",
-    "firebase": "^12.1.0",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.3.0",
     "@simplewebauthn/browser": "^8.3.4",
+    "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "leva": "^0.10.0",
     "lucide-react": "^0.536.0",
@@ -25,7 +27,8 @@
     "react-icons": "^5.5.0",
     "react-spinners": "^0.17.0",
     "recharts": "^3.1.0",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@types/node": "^22.17.0",

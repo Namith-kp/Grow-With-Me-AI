@@ -4,6 +4,11 @@ import { UserIcon, BriefcaseIcon, LightbulbIcon, CheckCircleIcon, RocketIcon } f
 import { firestoreService } from '../services/firestoreService';
 import { getAllCountries, getStatesByCountry, getCitiesByState, Country, State } from '../data/locations-comprehensive';
 import SearchableDropdown from './SearchableDropdown';
+import MultiSelectDropdown from './MultiSelectDropdown';
+import SingleSelectDropdown from './SingleSelectDropdown';
+import { ALL_SKILLS, SKILL_CATEGORIES } from '../data/skills';
+import { EXPERIENCE_LEVELS, BUSINESS_EXPERIENCE_LEVELS, INVESTMENT_EXPERIENCE_LEVELS } from '../data/experience';
+import { INTERESTS_AND_DOMAINS, DOMAIN_CATEGORIES } from '../data/interests';
 
 type OnboardingData = Omit<User, 'id' | 'avatarUrl' | 'email' | 'connections' | 'pendingConnections'>;
 
@@ -958,27 +963,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">Investment Domains *</label>
-                                <input 
-                                    type="text" 
-                                    name="interestedDomains" 
-                                    value={formData.interestedDomains} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
-                                    placeholder="e.g., SaaS, FinTech, HealthTech" 
-                                    required 
+                                <MultiSelectDropdown
+                                    options={INTERESTS_AND_DOMAINS}
+                                    selectedValues={formData.interestedDomains.split(',').map(s => s.trim()).filter(s => s)}
+                                    onChange={(values) => setFormData(prev => ({ ...prev, interestedDomains: values.join(', ') }))}
+                                    placeholder="Select investment domains..."
+                                    categories={DOMAIN_CATEGORIES}
+                                    className="bg-slate-800 border-slate-700 text-white"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">Investment Experience *</label>
-                                <textarea 
-                                    name="investmentExperience" 
-                                    rows={3} 
-                                    value={formData.investmentExperience} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all resize-none" 
-                                    placeholder="Describe your investment experience..." 
-                                    required
-                                ></textarea>
+                                <SingleSelectDropdown
+                                    options={INVESTMENT_EXPERIENCE_LEVELS}
+                                    selectedValue={formData.investmentExperience}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, investmentExperience: value }))}
+                                    placeholder="Select your investment experience level..."
+                                    className="bg-slate-800 border-slate-700 text-white"
+                                    allowCustom={true}
+                                />
                             </div>
                         </>
                     )}
@@ -987,27 +990,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">Skills *</label>
-                                <input 
-                                    type="text" 
-                                    name="skills" 
-                                    value={formData.skills} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
-                                    placeholder="e.g., React, Product Management, Sales" 
-                                    required 
+                                <MultiSelectDropdown
+                                    options={ALL_SKILLS}
+                                    selectedValues={formData.skills.split(',').map(s => s.trim()).filter(s => s)}
+                                    onChange={(values) => setFormData(prev => ({ ...prev, skills: values.join(', ') }))}
+                                    placeholder="Select your skills..."
+                                    categories={SKILL_CATEGORIES}
+                                    className="bg-slate-800 border-slate-700 text-white"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">Experience *</label>
-                                <textarea 
-                                    name="experience" 
-                                    rows={3} 
-                                    value={formData.experience} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all resize-none" 
-                                    placeholder="Describe your professional experience..." 
-                                    required
-                                ></textarea>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Experience Level *</label>
+                                <SingleSelectDropdown
+                                    options={formData.role === Role.Founder ? BUSINESS_EXPERIENCE_LEVELS : EXPERIENCE_LEVELS}
+                                    selectedValue={formData.experience}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, experience: value }))}
+                                    placeholder="Select your experience level..."
+                                    className="bg-slate-800 border-slate-700 text-white"
+                                    allowCustom={true}
+                                />
                             </div>
                         </>
                     )}
@@ -1073,14 +1074,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onOnboardingComplete, userProfi
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">Interests *</label>
-                                <input 
-                                    type="text" 
-                                    name="interests" 
-                                    value={formData.interests} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all" 
-                                    placeholder="e.g., AI, FinTech, Sustainable Tech" 
-                                    required 
+                                <MultiSelectDropdown
+                                    options={INTERESTS_AND_DOMAINS}
+                                    selectedValues={formData.interests.split(',').map(s => s.trim()).filter(s => s)}
+                                    onChange={(values) => setFormData(prev => ({ ...prev, interests: values.join(', ') }))}
+                                    placeholder="Select your interests..."
+                                    categories={DOMAIN_CATEGORIES}
+                                    className="bg-slate-800 border-slate-700 text-white"
                                 />
                             </div>
                             <div>
