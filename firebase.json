@@ -15,5 +15,8 @@
         "npm --prefix \"functions\" run lint"
       ]
     }
-  ]
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  }
 }

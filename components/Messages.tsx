@@ -13,9 +13,10 @@ interface MessagesProps {
     connections: User[];
     setIsMobileChatOpen: (isOpen: boolean) => void;
     selectedUserForChat?: User | null;
+    onUnreadCountChange?: (count: number) => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, setIsMobileChatOpen, selectedUserForChat: propSelectedUser }) => {
+const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, setIsMobileChatOpen, selectedUserForChat: propSelectedUser, onUnreadCountChange }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUserForChat, setSelectedUserForChat] = useState<User | null>(null);
     const [isMobileChatOpenLocal, setIsMobileChatOpenLocal] = useState(false);
@@ -97,6 +98,12 @@ const Messages: React.FC<MessagesProps> = ({ chats, currentUser, connections, se
     const getTotalUnreadCount = () => {
         return realtimeChats.reduce((total, chat) => total + getUnreadCount(chat), 0);
     };
+
+    // Notify parent component of unread count changes
+    useEffect(() => {
+        const count = getTotalUnreadCount();
+        onUnreadCountChange?.(count);
+    }, [realtimeChats, onUnreadCountChange]);
 
     return (
         <div className={cn(

@@ -1252,6 +1252,10 @@ const App: React.FC = () => {
                         isMobileChatOpen={isMobileChatOpen}
                         isMobileNegotiationOpen={isMobileNegotiationOpen}
                         onClearSelectedUser={() => setSelectedUserForProfile(null)}
+                        unreadMessageCount={userProfile ? chats.reduce((count, chat) => {
+                            const unreadCount = chat.unreadCounts?.[userProfile.id] || 0;
+                            return count + unreadCount;
+                        }, 0) : 0}
                     />
                 )}
                 <main className={`flex-grow transition-all duration-300 ${(view !== View.LANDING && view !== View.AUTH && view !== View.ONBOARDING) ? 'ml-0 lg:ml-64' : ''} ${view === View.MESSAGES || view === View.NEGOTIATIONS || view === View.ANALYTICS || view === View.PROFILE || view === View.NOTIFICATIONS ? 'p-0 overflow-hidden' : 'p-4 sm:p-8 pt-16 lg:pt-8'}`}>

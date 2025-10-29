@@ -383,6 +383,37 @@ export const firestoreService = {
         });
     },
 
+    getUnreadMessageCountRealtime: (userId: string, callback: (count: number) => void) => {
+        console.log('🔍 Firestore: Setting up getUnreadMessageCountRealtime for user:', userId);
+        
+        const chatsRef = db.collection("chats")
+            .where("participants", "array-contains", userId);
+        
+        return chatsRef.onSnapshot(
+            async (snapshot) => {
+                console.log('📨 Firestore: Message count snapshot received, docs count:', snapshot.docs.length);
+                
+                let totalUnread = 0;
+                for (const doc of snapshot.docs) {
+                    const chatData = doc.data();
+                    const unreadCounts = chatData.unreadCounts || {};
+                    totalUnread += (unreadCounts[userId] || 0);
+                }
+                
+                console.log('🔢 Firestore: Total unread messages:', totalUnread);
+                callback(totalUnread);
+            },
+            (error) => {
+                console.error('❌ Firestore: Error in getUnreadMessageCountRealtime:', error);
+                console.error('❌ Firestore: Error code:', error.code);
+                console.error('❌ Firestore: Error message:', error.message);
+                
+                // Call callback with 0 on error to avoid crashing
+                callback(0);
+            }
+        );
+    },
+
     markChatAsRead: async (chatId: string, userId: string) => {
         try {
             const chatRef = db.collection('chats').doc(chatId);

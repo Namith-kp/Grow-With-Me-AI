@@ -2,7 +2,6 @@ export const BANNED_WORDS: string[] = [
 	// Keep this list small and maintainable; expand as needed
 	// Words should be lowercase
 	"abuse",
-	"hate",
 	"racist",
 	"sexist",
 	"nigger",
@@ -66,7 +65,6 @@ export const BANNED_WORDS: string[] = [
     "sex",
     "sexy",
     "sexists",
-    
     "blowjob",
     "blowjobs",
     "handjob",

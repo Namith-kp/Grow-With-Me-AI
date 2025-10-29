@@ -13,6 +13,7 @@ interface HeaderProps {
     isMobileChatOpen?: boolean;
     isMobileNegotiationOpen?: boolean;
     onClearSelectedUser?: () => void;
+    unreadMessageCount: number;
 }
 
 const NavLink: React.FC<{
@@ -31,18 +32,20 @@ const NavLink: React.FC<{
             }`}
             onClick={() => setView(targetView)}
         >
-            <Icon className="w-6 h-6" />
-            <span className="flex-grow">{children}</span>
-            {pendingCount && pendingCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {pendingCount}
-                </span>
-            )}
+            <div className="relative flex-shrink-0">
+                <Icon className="w-6 h-6" />
+                {pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                        {pendingCount > 99 ? '99+' : pendingCount}
+                    </span>
+                )}
+            </div>
+            <span className="flex-grow truncate">{children}</span>
         </div>
     );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, isMobileChatOpen = false, isMobileNegotiationOpen = false, onClearSelectedUser }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLogout, isMobileChatOpen = false, isMobileNegotiationOpen = false, onClearSelectedUser, unreadMessageCount }) => {
     const [isMenuOpen, setMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -276,7 +279,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                 <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 shadow-lg flex justify-between items-center h-16 px-1 sm:hidden lg:hidden gap-1 transition-transform duration-300 ${showNav ? 'translate-y-0' : 'translate-y-full'}`}>
                     <button onClick={() => handleNavigation(View.DASHBOARD)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.DASHBOARD ? 'text-purple-400' : 'text-neutral-300'}`}> <UserIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Dashboard</span> </button>
                     <button onClick={() => handleNavigation(View.ANALYTICS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.ANALYTICS ? 'text-purple-400' : 'text-neutral-300'}`}> <TrendingUpIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Analytics</span> </button>
-                    <button onClick={() => handleNavigation(View.MESSAGES)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.MESSAGES ? 'text-purple-400' : 'text-neutral-300'}`}> <MessageSquareIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Messages</span> </button>
+                    <button onClick={() => handleNavigation(View.MESSAGES)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.MESSAGES ? 'text-purple-400' : 'text-neutral-300'}`}>
+                        <div className="relative flex-shrink-0">
+                            <MessageSquareIcon className="w-5 h-5 mb-0.5" />
+                            {unreadMessageCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
+                                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-[11px] leading-tight truncate">Messages</span>
+                    </button>
                     <button onClick={() => handleNavigation(View.IDEAS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.IDEAS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Ideas</span> </button>
                     <button onClick={() => handleNavigation(View.NEGOTIATIONS)} className={`flex flex-col items-center flex-1 py-1 mx-0.5 ${currentView === View.NEGOTIATIONS ? 'text-purple-400' : 'text-neutral-300'}`}> <LightbulbIcon className="w-5 h-5 mb-0.5" /> <span className="text-[11px] leading-tight">Negotiations</span> </button>
                 </nav>
@@ -313,7 +326,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                             <ul className="space-y-2">
                                 <li><NavLink currentView={currentView} targetView={View.DASHBOARD} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={UserIcon}>Dashboard</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.ANALYTICS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={TrendingUpIcon}>Analytics</NavLink></li>
-                                <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={MessageSquareIcon}>Messages</NavLink></li>
+                                <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={MessageSquareIcon} pendingCount={unreadMessageCount}>Messages</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.IDEAS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={LightbulbIcon}>Ideas</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.PEOPLE} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={UsersIcon}>People</NavLink></li>
                                 <li><NavLink currentView={currentView} targetView={View.NEGOTIATIONS} setView={(v) => { handleNavigation(v); setSidebarOpen(false); }} icon={LightbulbIcon}>Negotiations</NavLink></li>
@@ -386,7 +399,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, userProfile, onLo
                     <ul className="space-y-2">
                         <li><NavLink currentView={currentView} targetView={View.DASHBOARD} setView={handleNavigation} icon={UserIcon}>Dashboard</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.ANALYTICS} setView={handleNavigation} icon={TrendingUpIcon}>Analytics</NavLink></li>
-                        <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={handleNavigation} icon={MessageSquareIcon}>Messages</NavLink></li>
+                        <li><NavLink currentView={currentView} targetView={View.MESSAGES} setView={handleNavigation} icon={MessageSquareIcon} pendingCount={unreadMessageCount}>Messages</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.IDEAS} setView={handleNavigation} icon={LightbulbIcon}>Ideas</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.PEOPLE} setView={handleNavigation} icon={UsersIcon}>People</NavLink></li>
                         <li><NavLink currentView={currentView} targetView={View.NEGOTIATIONS} setView={handleNavigation} icon={LightbulbIcon}>Negotiations</NavLink></li>
