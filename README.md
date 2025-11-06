@@ -4,7 +4,17 @@ AI Powered Co-Founder Finding Platform for Founders to build a start-up companie
 
 ## 🏃‍♂️ Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:**  
+
+- Node.js (version 16+ recommended)
+
+- npm (or yarn)
+
+- A Firebase project with authentication & Firestore configured
+
+- A Google Gemini API key (for the AI matching engine)
+
+- (Optional) GitHub repository for deployment or Vercel account
 
 1. Install dependencies:
    `npm install`
