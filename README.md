@@ -16,8 +16,6 @@ AI Powered Co-Founder Finding Platform for Founders to build a start-up companie
 
 - (Optional) GitHub repository for deployment or Vercel account
 
-1. Install dependencies:
-   `npm install`
 
 ## 📦 Setup Instructions
 
