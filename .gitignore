@@ -19,7 +19,6 @@ dist-ssr
 .env.development
 .env.production
 .env.test
-.env.example
 
 # API keys and secrets
 *.pem
