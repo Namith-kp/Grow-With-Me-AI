@@ -140,5 +140,5 @@ Namith KP
 
 ## License
 
-- [MIT](https://choosealicense.com/licenses/mit/)
+- [MIT](https://github.com/Namith-kp/Grow-With-Me-AI/blob/main/LICENSE)
 
